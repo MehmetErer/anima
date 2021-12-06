@@ -281,7 +281,7 @@ class ConformerUI(object):
         self.alpha_only_check_box = QtWidgets.QCheckBox(self.parent_widget)
         self.alpha_only_check_box.setText('Alpha Only')
         h_layout5.addWidget(self.alpha_only_check_box)
-        
+
         self.main_layout.addLayout(h_layout5)
 
         h_layout6 = QtWidgets.QHBoxLayout()
@@ -317,7 +317,7 @@ class ConformerUI(object):
         h_layout6.addWidget(date_label)
 
         self.start_date = QtWidgets.QDateEdit(self.parent_widget)
-        self.start_date.setDate(QtCore.QDate.currentDate()) # setDate(QtCore.QDate(2021, 1, 1))
+        self.start_date.setDate(QtCore.QDate.currentDate())  # setDate(QtCore.QDate(2021, 1, 1))
         self.start_date.setCurrentSection(QtWidgets.QDateTimeEdit.MonthSection)
         self.start_date.setCalendarPopup(True)
         h_layout6.addWidget(self.start_date)
@@ -370,7 +370,8 @@ class ConformerUI(object):
         self.ext_name_combo_box.addItem('exr', -1)
         self.ext_name_combo_box.addItem('png', 0)
         self.ext_name_combo_box.addItem('tga', 1)
-        self.ext_name_combo_box.addItem('jpg', 2)
+        self.ext_name_combo_box.addItem('mov', 2)
+        self.ext_name_combo_box.addItem('mp4', 3)
 
         self.wip_check_box.setEnabled(0)
         self.hrev_check_box.setEnabled(0)
@@ -453,10 +454,10 @@ class ConformerUI(object):
             # assume that scenes are 1st level children of sequences (default in Anima Pipeline Structure)
             from stalker import Task, Type
             scene_type = Type.query.filter(Type.name == 'Scene').first()
-            all_scenes = Task.query\
-                .filter(Task.parent == stalker_seq)\
-                .filter(Task.type == scene_type)\
-                .order_by(Task.name)\
+            all_scenes = Task.query \
+                .filter(Task.parent == stalker_seq) \
+                .filter(Task.type == scene_type) \
+                .order_by(Task.name) \
                 .all()
             for task in all_scenes:
                 self.scene_combo_box.addItem(task.name, task)
@@ -541,7 +542,7 @@ class ConformerUI(object):
             self.alpha_only_check_box.setChecked(0)
             self.alpha_only_check_box.setEnabled(0)
             self.plus_plates_check_box.setChecked(0)
-            self.plus_plates_check_box.setEnabled(0)   
+            self.plus_plates_check_box.setEnabled(0)
 
     def filter_statuses_check_box_changed(self, state):
         """runs when the filter_status_check_box is changed
@@ -612,8 +613,8 @@ class ConformerUI(object):
                         for shot in stalker_seq.shots:
                             shot_num = int(shot.name.split('_')[-1])
                             if stalker_scene in shot.parents \
-                               and shot_in_num <= shot_num <= shot_out_num \
-                               and shot not in shots:
+                                    and shot_in_num <= shot_num <= shot_out_num \
+                                    and shot not in shots:
                                 shots.append(shot)
 
         if not shots:
@@ -629,7 +630,7 @@ class ConformerUI(object):
         """returns valisd statuses from ui
         """
         valid_status_names = []
-        
+
         if self.wip_check_box.isChecked():
             valid_status_names.append('Work In Progress')
         if self.hrev_check_box.isChecked():
@@ -638,7 +639,7 @@ class ConformerUI(object):
             valid_status_names.append('Pending Review')
         if self.completed_check_box.isChecked():
             valid_status_names.append('Completed')
-        
+
         return valid_status_names
 
     def get_latest_output_path(self, shot, task_name, ext='exr', return_raw_values=False):
@@ -664,28 +665,51 @@ class ConformerUI(object):
         task_path = task.absolute_path
         output_path = os.path.join(task_path, 'Outputs', 'Main')
 
-        latest_task_name = None
-        if task.versions:
-            latest_task_version = Version.query.filter(Version.task == task).filter(Version.take_name == 'Main')\
-                .order_by(Version.version_number.desc()).first()
-            if latest_task_version:
-                latest_task_name = os.path.splitext(latest_task_version.filename)[0]
-
         resolve_path = None
         resolve_raw_path = None
         start_frame = None
         end_frame = None
         file_paths = None
-        if latest_task_name:
-            if not self.alpha_only_check_box.isChecked():
-                file_paths = glob.glob("%s/*/%s/*%s.*.%s" % (output_path, ext, latest_task_name, ext))
-                if not file_paths:  # try outputs with no version folders
-                    file_paths = glob.glob("%s/%s/*%s.*.%s" % (output_path, ext, latest_task_name, ext))
-            else:  # check for paths that contain "alpha" as text
-                version_folder = latest_task_name.split('_')[-1]
-                file_paths = glob.glob("%s/%s/%s/*%s*.*.%s" % (output_path, version_folder, ext, 'alpha', ext))
-                if not file_paths:  # try outputs with no version folders
-                    file_paths = glob.glob("%s/%s/*%s*%s.*.%s" % (output_path, ext, 'alpha', version_folder, ext))
+
+        latest_task_name = None
+        latest_version_name = None
+        found_version_name = None
+
+        latest_version = None
+        try:
+            latest_version = Version.query.filter(Version.task == task).filter(Version.take_name == 'Main') \
+                .order_by(Version.version_number.desc())[0]
+        except IndexError:
+            pass
+
+        if latest_version:
+            latest_version_name = os.path.splitext(latest_version.filename)[0]
+            latest_v = True
+            for latest_task_version in Version.query.filter(Version.task == task).filter(Version.take_name == 'Main') \
+                    .order_by(Version.version_number.desc()):
+                latest_task_name = os.path.splitext(latest_task_version.filename)[0]
+
+                if not self.alpha_only_check_box.isChecked():
+                    file_paths = glob.glob("%s/*/%s/*%s.*.%s" % (output_path, ext, latest_task_name, ext))
+                    if not file_paths:  # try outputs with no version folders
+                        file_paths = glob.glob("%s/%s/*%s.*.%s" % (output_path, ext, latest_task_name, ext))
+                    if not file_paths:  # try video files (mov, mp4)
+                        file_paths = glob.glob("%s/*/%s/*%s.%s" % (output_path, ext, latest_task_name, ext))
+                else:  # check for paths that contain "alpha" as text
+                    version_folder = latest_task_name.split('_')[-1]
+                    file_paths = glob.glob("%s/%s/%s/*%s*.*.%s" % (output_path, version_folder, ext, 'alpha', ext))
+                    if not file_paths:  # try outputs with no version folders
+                        file_paths = glob.glob("%s/%s/*%s*%s.*.%s" % (output_path, ext, 'alpha', version_folder, ext))
+                    if not file_paths:  # try video files (mov, mp4)
+                        file_paths = glob.glob("%s/*/%s/*%s.%s" % (output_path, ext, latest_task_name, ext))
+                if file_paths:
+                    if latest_v is False:
+                        found_version_name = latest_task_name
+                    break
+                latest_v = False
+
+        if latest_version_name and found_version_name:
+            print("%s NOT FOUND! -> %s 's output will be used." % (latest_version_name, found_version_name))
 
         # try to find path manually for plate tasks as they might not have default naming conventions or versions
         if not resolve_path and task_name == 'Plate':
@@ -695,7 +719,7 @@ class ConformerUI(object):
                 dir_names = glob.glob('%s/*' % main_dir)
                 for dir_name in dir_names:
                     if os.path.isdir(dir_name) and os.path.basename(dir_name)[0] == 'v' \
-                       and os.path.basename(dir_name)[1:].isdigit() and len(os.path.basename(dir_name)) == 4:
+                            and os.path.basename(dir_name)[1:].isdigit() and len(os.path.basename(dir_name)) == 4:
                         version_numbers.append(int(os.path.basename(dir_name)[1:]))
             if version_numbers:
                 latest_version_number = max(version_numbers)
@@ -708,12 +732,25 @@ class ConformerUI(object):
         if file_paths:
             regex = r'\d+$|#+$'
             dir_base = file_paths[0].split('.')[0]
-            first_dir_base = os.path.splitext(file_paths[0])[0]
-            last_dir_base = os.path.splitext(file_paths[-1])[0]
-            start_frame = int(re.findall(regex, first_dir_base)[0])
-            end_frame = int(re.findall(regex, last_dir_base)[0])
+            frames = []
+            for f in file_paths:
+                frame = int(re.findall(regex, os.path.splitext(f)[0])[0])
+                frames.append(frame)
+            start_frame = min(frames)
+            end_frame = max(frames)
+            first_dir_base = '%s.%s.%s' % (dir_base, str(start_frame), ext)
+            last_dir_base = '%s.%s.%s' % (dir_base, str(end_frame), ext)
             resolve_path = '%s.[%s-%s].%s' % (dir_base, start_frame, end_frame, ext)
             resolve_raw_path = '%s.%s.%s' % (dir_base, '%0{digits}d'.format(digits=len(str(start_frame))), ext)
+            if ext in ['mov', 'mp4']:
+                first_dir_base = os.path.splitext(file_paths[0])[0]
+                last_dir_base = os.path.splitext(file_paths[-1])[0]
+                if len(first_dir_base.split('.')) > 1:
+                    resolve_path = '%s.%s.%s' % (dir_base, str(re.findall(regex, last_dir_base)[0]), ext)
+                    resolve_raw_path = '%s.%s.%s' % (dir_base, str(re.findall(regex, last_dir_base)[0]), ext)
+                else:
+                    resolve_path = '%s.%s' % (dir_base, ext)
+                    resolve_raw_path = '%s.%s' % (dir_base, ext)
             resolve_path = os.path.normpath(resolve_path).replace('\\', '/')
 
         if return_raw_values:
@@ -760,7 +797,7 @@ class ConformerUI(object):
             pass
 
         print('[%s] frame number returned from [%s]' % (frame_number, os.path.basename(img_path)))
-        
+
         return frame_number
 
     # TODO: XML creation must be done better with Anima pipeline's xml class
@@ -774,7 +811,7 @@ class ConformerUI(object):
         fps = self.fps_line.text()
         # for some reason fcpxml does not like float fps like 24.0
         # if the decimal is .0 than fps must be integer 24 so...
-        if float(fps)/math.trunc(float(fps)) == 1.0:
+        if float(fps) / math.trunc(float(fps)) == 1.0:
             fps = '%s' % math.trunc(float(fps))
 
         with open(xml_file_full_path, 'w') as f:
@@ -832,8 +869,8 @@ class ConformerUI(object):
                 last_frame = int(clip_path.split('.')[-2].split('-')[1].strip(']'))
                 total_frames = (last_frame - first_frame) + 1
                 if self.record_in_check_box.isChecked():
-                    offset_frame = rc_ins[ind-1]
-                st = tc_frame_numbers[ind-1]
+                    offset_frame = rc_ins[ind - 1]
+                st = tc_frame_numbers[ind - 1]
                 if self.slated_check_box.isChecked():
                     if not self.record_in_check_box.isChecked():
                         f.write('                        <asset-clip offset="%s/%ss" duration="%s/%ss" '
@@ -899,10 +936,12 @@ class ConformerUI(object):
             plate_range_mismatch_list = []
             none_path_list = []
             for shot in shots:
+                print('Checking Shot... - %s' % shot.name)
+
                 clip_path = self.get_latest_output_path(shot, t_name, ext=extension)
                 if t_name == 'Comp' and clip_path is None:  # look for Cleanup task
-                    clip_path = self.get_latest_output_path(shot, 'Cleanup', ext=extension)       
-                
+                    clip_path = self.get_latest_output_path(shot, 'Cleanup', ext=extension)
+
                 if clip_path:
                     clip_path_list.append(clip_path)
                 elif clip_path is None:
@@ -922,7 +961,6 @@ class ConformerUI(object):
                         raise RuntimeError('%s -> No record in data! Turn off Record In check box.' % shot.name)
                     record_in_list.append([clip_path, rc_in])
 
-                print('Checking Shot... - %s' % shot.name)
             clip_path_list.sort()
             record_in_list.sort()
             none_path_list.sort()
@@ -952,7 +990,7 @@ class ConformerUI(object):
             for i in range(0, len(clip_path_list)):
                 if plate_path_list and self.plus_plates_check_box.isChecked():
                     print('%s  +  %s' % (clip_path_list[i], plate_path_list[i]))
-                else:    
+                else:
                     print(clip_path_list[i])
             print('--------------------------------------------------------------------------')
             if none_path_list:
@@ -968,7 +1006,7 @@ class ConformerUI(object):
                 print('-----------------------PLATES RANGE MISMATCH------------------------------')
                 for p_path in plate_range_mismatch_list:
                     print(p_path)
-                print('--------------------------------------------------------------------------')        
+                print('--------------------------------------------------------------------------')
 
             if clip_path_list:
                 self.clip_paths_to_xml(clip_path_list, record_in_list, self.xml_path)
@@ -1012,6 +1050,8 @@ class ConformerUI(object):
             start_index = None
             end_index = None
             for shot in shots:
+                print('Checking Shot... - %s' % shot.name)
+
                 result = self.get_latest_output_path(
                     shot, t_name, ext=extension, return_raw_values=True
                 )
@@ -1023,6 +1063,7 @@ class ConformerUI(object):
                     result = self.get_latest_output_path(
                         shot, 'Cleanup', ext=extension, return_raw_values=True
                     )
+                    print('clean: %s' % str(result))
                     if result:
                         clip_info = result[0]
                         start_index = result[1]
@@ -1049,7 +1090,6 @@ class ConformerUI(object):
                         raise RuntimeError('%s -> No record in data! Turn off Record In check box.' % shot.name)
                     record_in_list.append([clip_info, start_index, end_index, rc_in])
 
-                print('Checking Shot... - %s' % shot.name)
             clip_path_list.sort()
             record_in_list.sort()
             none_path_list.sort()
@@ -1118,13 +1158,16 @@ class ConformerUI(object):
                     print("clip_path  : %s" % clip_path)
                     print("start frame: %s" % start_index)
                     print("end frame  : %s" % end_index)
-                    media_pool_item = media_pool.ImportMedia([
-                        {
-                            "FilePath": clip_path,
-                            "StartIndex": start_index,
-                            "EndIndex": end_index
-                        }
-                    ])[0]
+                    if extension in ['mov', 'mp4']:
+                        media_pool_item = media_pool.ImportMedia([clip_path])[0]
+                    else:
+                        media_pool_item = media_pool.ImportMedia([
+                            {
+                                "FilePath": clip_path,
+                                "StartIndex": start_index,
+                                "EndIndex": end_index
+                            }
+                        ])[0]
                     if include_slates:
                         # include one frame for the slates
                         sub_clip = {
@@ -1134,8 +1177,10 @@ class ConformerUI(object):
                         }
                         slate_clip = media_pool.AppendToTimeline([sub_clip])[0]
                         slate_clip.SetClipColor("Orange")
-
-                    media_pool.AppendToTimeline([media_pool_item])
+                    if extension in ['mov', 'mp4']:
+                        media_pool.AppendToTimeline(media_pool_item)
+                    else:
+                        media_pool.AppendToTimeline([media_pool_item])
 
                 # if plate_path_list and self.plus_plates_check_box.isChecked():
                 #     print('CREATING + PLATES XML... Please Wait... ----------------------------')
@@ -1182,7 +1227,7 @@ class ConformerUI(object):
 
                 has_valid_status = True
                 if self.filter_statuses_check_box.isChecked():
-                    if t_name != 'Plate': # do not check status for plates
+                    if t_name != 'Plate':  # do not check status for plates
                         try:
                             valid_status_names = self.get_valid_statuses_from_ui()
                             if task.status.name not in valid_status_names:
@@ -1196,7 +1241,7 @@ class ConformerUI(object):
                         continue
 
                     if task.versions:
-                        last_version = Version.query.filter(Version.task == task).filter(Version.take_name == 'Main')\
+                        last_version = Version.query.filter(Version.task == task).filter(Version.take_name == 'Main') \
                             .order_by(Version.version_number.desc()).first()
                     else:
                         continue
