@@ -234,7 +234,7 @@ class GeneralTools(object):
         import os
         hip = os.environ.get('HIP')
         if hip:
-            open_browser_in_location(hip)
+            open_browser_in_location(hip, shell=False)
 
     @classmethod
     def copy_node_path(cls):
