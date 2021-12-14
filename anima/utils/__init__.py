@@ -60,10 +60,11 @@ def relpath(p1, p2, sep=os.path.sep, pardir=os.path.pardir):
     return sep.join([pardir] * len(u1) + u2)
 
 
-def open_browser_in_location(path):
+def open_browser_in_location(path, shell=True):
     """Opens the os native browser at the given path
 
     :param path: The path that the browser should be opened at.
+    :param shell: Specifies subprocess shell mode.
     """
     command = []
 
@@ -90,7 +91,7 @@ def open_browser_in_location(path):
 
     if os.path.exists(path):
         import subprocess
-        subprocess.Popen(command, shell=True)
+        subprocess.Popen(command, shell=shell)
     else:
         raise IOError("%s doesn't exists!" % path)
 
