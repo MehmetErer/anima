@@ -253,6 +253,19 @@ class ConformerUI(object):
 
         self.main_layout.addLayout(h_layout4a)
 
+        h_layout4b = QtWidgets.QHBoxLayout()
+
+        self.just_import_as_media_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.just_import_as_media_check_box.setText('Just Import to Media Library')
+        self.just_import_as_media_check_box.stateChanged.connect(partial(self.just_import_as_media_check_box_changed))
+        h_layout4b.addWidget(self.just_import_as_media_check_box)
+
+        self.keep_ext_in_clip_names_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.keep_ext_in_clip_names_check_box.setText('Keep Extension in Clip Names')
+        h_layout4b.addWidget(self.keep_ext_in_clip_names_check_box)
+
+        self.main_layout.addLayout(h_layout4b)
+
         h_layout5 = QtWidgets.QHBoxLayout()
 
         task_name_label = QtWidgets.QLabel(self.parent_widget)
@@ -557,6 +570,22 @@ class ConformerUI(object):
             self.hrev_check_box.setEnabled(1)
             self.prev_check_box.setEnabled(1)
             self.completed_check_box.setEnabled(1)
+
+    def just_import_as_media_check_box_changed(self, state):
+        """runs when the just_import_as_media_check_box is changed
+        """
+        if state == 0:
+            self.record_in_check_box.setEnabled(1)
+            self.slated_check_box.setEnabled(1)
+            self.use_current_timeline.setEnabled(1)
+            self.keep_ext_in_clip_names_check_box.setChecked(0)
+            self.keep_ext_in_clip_names_check_box.setEnabled(1)
+        else:
+            self.record_in_check_box.setEnabled(0)
+            self.slated_check_box.setEnabled(0)
+            self.use_current_timeline.setEnabled(0)
+            self.keep_ext_in_clip_names_check_box.setChecked(1)
+            self.keep_ext_in_clip_names_check_box.setEnabled(0)
 
     def slated_check_box_changed(self, state):
         """runs when the slated_check_box is changed
@@ -1025,9 +1054,10 @@ class ConformerUI(object):
                     media_pool.ImportTimelineFromFile(self.xml_path)
                     print('+ PLATES XML IMPORTED to Resolve')
                 # Fix shot clip names
-                from anima.env.resolve.shot_tools import ShotManager
-                sm = ShotManager()
-                sm.fix_shot_clip_names()
+                if not self.keep_ext_in_clip_names_check_box.isChecked():
+                    from anima.env.resolve.shot_tools import ShotManager
+                    sm = ShotManager()
+                    sm.fix_shot_clip_names()
 
             else:
                 print('No Outputs found with given specs!')
@@ -1144,12 +1174,13 @@ class ConformerUI(object):
                 self.connect_to_resolve()
                 media_pool = self.resolve_project.GetMediaPool()
 
-                if not use_current_timeline:
-                    timeline_name = self.generate_timeline_name()
-                    print("Creating new timeline with name: %s" % timeline_name)
-                    timeline = media_pool.CreateEmptyTimeline(timeline_name)
-                else:
-                    print("Using current timeline!")
+                if not self.just_import_as_media_check_box.isChecked():
+                    if not use_current_timeline:
+                        timeline_name = self.generate_timeline_name()
+                        print("Creating new timeline with name: %s" % timeline_name)
+                        timeline = media_pool.CreateEmptyTimeline(timeline_name)
+                    else:
+                        print("Using current timeline!")
 
                 for clip_info in clip_path_list:
                     clip_path = clip_info[0]
@@ -1168,19 +1199,22 @@ class ConformerUI(object):
                                 "EndIndex": end_index
                             }
                         ])[0]
-                    if include_slates:
-                        # include one frame for the slates
-                        sub_clip = {
-                            "mediaPoolItem": media_pool_item,
-                            "startFrame": 0,
-                            "endFrame": 0
-                        }
-                        slate_clip = media_pool.AppendToTimeline([sub_clip])[0]
-                        slate_clip.SetClipColor("Orange")
-                    if extension in ['mov', 'mp4']:
-                        media_pool.AppendToTimeline(media_pool_item)
-                    else:
-                        media_pool.AppendToTimeline([media_pool_item])
+
+                    if not self.just_import_as_media_check_box.isChecked():
+                        if include_slates:
+                            # include one frame for the slates
+                            sub_clip = {
+                                "mediaPoolItem": media_pool_item,
+                                "startFrame": 0,
+                                "endFrame": 0
+                            }
+                            slate_clip = media_pool.AppendToTimeline([sub_clip])[0]
+                            slate_clip.SetClipColor("Orange")
+
+                        if extension in ['mov', 'mp4']:
+                            media_pool.AppendToTimeline(media_pool_item)
+                        else:
+                            media_pool.AppendToTimeline([media_pool_item])
 
                 # if plate_path_list and self.plus_plates_check_box.isChecked():
                 #     print('CREATING + PLATES XML... Please Wait... ----------------------------')
@@ -1191,9 +1225,10 @@ class ConformerUI(object):
                 #     print('+ PLATES XML IMPORTED to Resolve')
 
                 # Fix shot clip names
-                from anima.env.resolve.shot_tools import ShotManager
-                sm = ShotManager()
-                sm.fix_shot_clip_names()
+                if not self.keep_ext_in_clip_names_check_box.isChecked():
+                    from anima.env.resolve.shot_tools import ShotManager
+                    sm = ShotManager()
+                    sm.fix_shot_clip_names()
 
             else:
                 print('No Outputs found with given specs!')
