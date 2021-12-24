@@ -858,7 +858,8 @@ class ShotClip(object):
                     except IndexError:
                         pass
 
-                    if len(parts) >= 4 and ext != 'r3d':
+                    # TODO: fix this in a more clever generic way
+                    if len(parts) >= 4 and ext not in ['r3d', 'dng']:
                         import re
                         project_code_regex = re.compile("[A-Z]+")
                         episode_code_regex = re.compile("[0-9]+")
