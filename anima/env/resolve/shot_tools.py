@@ -1205,12 +1205,94 @@ class ShotManagerUI(object):
         update_shot_record_in_info_button.clicked.connect(self.update_shot_record_in_info_callback)
         color_list.next()
 
+        check_clip_length_horizontal_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.addLayout(check_clip_length_horizontal_layout)
+
+        self.with_handles_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.with_handles_check_box.setText("with Handles")
+        self.with_handles_check_box.setChecked(False)
+        self.with_handles_check_box.setToolTip("Calculate Handles from UI for Clip Length Check")
+        self.with_handles_check_box.setFixedWidth(120)
+        check_clip_length_horizontal_layout.addWidget(self.with_handles_check_box)
+
+        # Check Clip Length button
+        check_clip_length_button = QtWidgets.QPushButton(self.parent_widget)
+        check_clip_length_button.setText("Check Clip Lengths                                        ")
+        set_widget_bg_color(check_clip_length_button, color_list)
+        check_clip_length_button.clicked.connect(partial(self.check_clip_length_button_clicked))
+        color_list.next()
+        check_clip_length_horizontal_layout.addWidget(check_clip_length_button)
+
         # ---------------------------------------------------------
         self.main_layout.addStretch()
 
         # ---------------------------------------------------------
         # Signals
         self.project_changed(None)
+
+    def check_clip_length_button_clicked(self):
+        """runs when the check_clip_length_button is clicked
+        """
+        from stalker import Shot
+
+        shots = {}
+        sm = ShotManager()
+        clips = sm.get_clips()
+        timeline = sm.get_current_timeline()
+        timeline_items = timeline.GetItemListInTrack('video', 1)
+        stalker_project = self.project_combo_box.get_current_project()
+        if not stalker_project:
+            raise RuntimeError("No project selected!")
+
+        for shot in sm.get_shot_clips():
+            isinstance(shot, ShotClip)
+            stalker_shot = Shot.query.filter(Shot.project == stalker_project).filter(Shot.code == shot.shot_code).first()
+            handles = 0
+            if self.with_handles_check_box.isChecked():
+                handles = self.handle_spin_box.value()
+                if handles <= 0:
+                    raise RuntimeError('Please specify handles from UI!')
+            if stalker_shot and stalker_shot.name not in shots.keys():
+                shot_length = (stalker_shot.cut_out - stalker_shot.cut_in) + 1 - (handles * 2)
+                if not shots.get(stalker_shot.name):
+                    shots[stalker_shot.name] = [0, 0] # db duration, timeline duration
+                if shots.get(stalker_shot.name):
+                    shots[stalker_shot.name][0] = shot_length
+
+        ignored_clip_names =[]
+        for timeline_item in timeline_items:
+            duration = timeline_item.GetDuration()
+            if duration != 1: # this probably means this is a sequence
+                clip_name = timeline_item.GetName()
+                shot_name = '_'.join(clip_name.split('_')[:4])
+                if shot_name in shots.keys():
+                    shots[shot_name][1] = duration
+                else:
+                    ignored_clip_names.append(clip_name)
+
+        errored_shots = []
+        for shot in shots.keys():
+            status = 'NULL'
+            if shots[shot][0] == shots[shot][1]:
+                status = 'OK'
+            else:
+                status = 'ERROR <---'
+                errored_shots.append(shot)
+            print('%s : DB: %i - TM: %i --> %s' % (shot, shots[shot][0], shots[shot][1], status))
+
+        if ignored_clip_names:
+            print('----------- IGNORED CLIPS ------------')
+            for clip_name in ignored_clip_names:
+                print(clip_name)
+            print('--------------------------------------')
+
+        if errored_shots:
+            print('----------- ERRORED SHOTS ------------')
+            for sh_name in errored_shots:
+                print(sh_name)
+            print('--------------------------------------')
+        else:
+            print('CLIP LENGTHS ARE ALL CORRECT.')
 
     def fill_preset_combo_box(self):
         """fills the preset comboBox
