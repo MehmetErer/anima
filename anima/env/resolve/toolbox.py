@@ -232,6 +232,46 @@ class ToolboxLayout(QtWidgets.QVBoxLayout):
         current_form_layout.setWidget(i, field_role, clip_output_generator_button)
 
         # -------------------------------------------------------------------
+        # All Clips Output Generator
+        i += 1
+
+        def clips_output_generator_wrapper():
+            #  = version_spinbox.value()
+            filename_template = filename_template_combo_box.currentText()
+            location_template = location_template_line_edit.text()
+            extend_start = extend_start_spinbox.value()
+            extend_end = extend_end_spinbox.value()
+            render_preset = self.render_presets_combo_box.currentText()
+
+            clips = []
+            from anima.env.resolve import shot_tools
+            sm = shot_tools.ShotManager()
+            timeline = sm.get_current_timeline()
+            timeline_items = timeline.GetItemListInTrack('video', 1)
+            for timeline_item in timeline_items:
+                if timeline_item.GetDuration() != 1: # exclude slates or still frames
+                    clips.append(timeline_item)
+
+            for clip in clips:
+                GenericTools.clip_output_generator(
+                    clip=clip,
+                    filename_template=filename_template,
+                    location_template=location_template,
+                    extend_start=extend_start,
+                    extend_end=extend_end,
+                    render_preset=render_preset
+                )
+
+        clips_output_generator_button = QtWidgets.QPushButton()
+        clips_output_generator_button.setText("Output - All Clips")
+        clips_output_generator_button.setToolTip("Outputs all sequence clips in current Timeline's video track 1")
+        clips_output_generator_button.clicked.connect(clips_output_generator_wrapper)
+        set_widget_bg_color(clips_output_generator_button, color_list)
+        color_list.next()
+
+        current_form_layout.setWidget(i, field_role, clips_output_generator_button)
+
+        # -------------------------------------------------------------------
         # Clip Output Generator By Index
         i += 1
         clip_index_label = QtWidgets.QLabel()
