@@ -289,6 +289,7 @@ class ConformerUI(object):
 
         self.plus_plates_check_box = QtWidgets.QCheckBox(self.parent_widget)
         self.plus_plates_check_box.setText('+ Plates')
+        self.plus_plates_check_box.stateChanged.connect(partial(self.plus_plates_check_box_changed))
         h_layout5.addWidget(self.plus_plates_check_box)
 
         self.alpha_only_check_box = QtWidgets.QCheckBox(self.parent_widget)
@@ -313,12 +314,34 @@ class ConformerUI(object):
         self.use_current_timeline.setText('Use Current Timeline')
         h_layout6.addWidget(self.use_current_timeline)
 
+        self.exclude_clips_in_sel_clips_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.exclude_clips_in_sel_clips_check_box.setText('Exclude Clips in Selected Bin')
+        h_layout6.addWidget(self.exclude_clips_in_sel_clips_check_box)
+
         self.main_layout.addLayout(h_layout6)
 
         self.conform_button = QtWidgets.QPushButton(self.parent_widget)
         self.conform_button.setText('CONFORM ALL')
         self.conform_button.clicked.connect(partial(self.conform))
         self.main_layout.addWidget(self.conform_button)
+
+        h_layout6a = QtWidgets.QHBoxLayout()
+
+        self.sg_location_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.sg_location_check_box.setText('ShotGrid Check')
+        self.sg_location_check_box.stateChanged.connect(partial(self.sg_location_check_box_changed))
+        h_layout6a.addWidget(self.sg_location_check_box)
+
+        self.location_line_edit = QtWidgets.QLineEdit(self.parent_widget)
+        self.location_line_edit.setText('Copy Paste SG Folder Location here...')
+        h_layout6a.addWidget(self.location_line_edit)
+
+        self.sg_check_button = QtWidgets.QPushButton(self.parent_widget)
+        self.sg_check_button.setText('<< Check Only')
+        self.sg_check_button.clicked.connect(partial(self.sg_check))
+        h_layout6a.addWidget(self.sg_check_button)
+
+        self.main_layout.addLayout(h_layout6a)
 
         self.main_layout.addWidget(create_separator(self.parent_widget))
 
@@ -392,6 +415,9 @@ class ConformerUI(object):
         self.prev_check_box.setEnabled(0)
         self.completed_check_box.setChecked(1)
         self.completed_check_box.setEnabled(0)
+
+        self.location_line_edit.setEnabled(0)
+        self.sg_check_button.setEnabled(0)
 
     def connect_to_resolve(self):
         """connects to resolve
@@ -587,6 +613,21 @@ class ConformerUI(object):
             self.keep_ext_in_clip_names_check_box.setChecked(1)
             self.keep_ext_in_clip_names_check_box.setEnabled(0)
 
+    def plus_plates_check_box_changed(self, state):
+        """runs when the plus_plates_check_box is changed
+        """
+        if state != 0:
+            self.slated_check_box.setChecked(0)
+            self.slated_check_box.setEnabled(0)
+            self.use_current_timeline.setChecked(0)
+            self.use_current_timeline.setEnabled(0)
+            self.ext_name_combo_box.setCurrentIndex(0)
+            self.ext_name_combo_box.setEnabled(0)
+        else:
+            self.slated_check_box.setEnabled(1)
+            self.use_current_timeline.setEnabled(1)
+            self.ext_name_combo_box.setEnabled(1)
+
     def slated_check_box_changed(self, state):
         """runs when the slated_check_box is changed
         """
@@ -604,6 +645,80 @@ class ConformerUI(object):
             self.slated_check_box.setEnabled(0)
         else:
             self.slated_check_box.setEnabled(1)
+
+    def sg_location_check_box_changed(self, state):
+        """runs when the sg_location_check_box is changed
+        """
+        if state != 0:
+            self.location_line_edit.setEnabled(1)
+            self.sg_check_button.setEnabled(1)
+        else:
+            self.location_line_edit.setEnabled(0)
+            self.sg_check_button.setEnabled(0)
+
+    def validate_shot_name(self, file_name):
+        """validates given name within stalker standard shot instance naming convention
+        :param clip_name:
+        :return: str
+        """
+        import os
+        import re
+
+        shot_name = None
+        parts = file_name.split("_")
+
+        if len(parts) >= 4:
+            project_code_regex = re.compile("[A-Z]+")
+            episode_code_regex = re.compile("[0-9]+")
+            scene_code_regex = re.compile("[A-Z0-9]+")
+            shot_code_regex = re.compile("[0-9]+")
+            project_code, episode_code, scene_code, shot_code = parts[0:4]
+
+            if re.match(project_code_regex, project_code) \
+                    and re.match(episode_code_regex, episode_code) \
+                    and re.match(scene_code_regex, scene_code) \
+                    and re.match(shot_code_regex, shot_code):
+                shot_name = "_".join(parts[0:4])
+
+        return shot_name
+
+    def get_sg_data(self, sg_dir):
+        """queries file paths of .mov files from specified root folder if validated
+        :param str sg_dir: root directory path
+        :return: list of file paths
+        """
+        import os
+
+        sg_data = []
+        if os.path.isdir(sg_dir):
+            for root, dirs, files in os.walk(sg_dir):
+                for f in files:
+                    base_name = os.path.basename(os.path.splitext(f)[0])
+                    if f.endswith('.mov') and self.validate_shot_name(base_name):
+                        sg_path = os.path.normpath(os.path.join(root, f))
+                        sg_info = [os.path.basename(sg_path).split('.')[0], sg_path] #  [nice_name_version, abs_path]
+                        sg_data.append(sg_info)
+        else:
+            raise RuntimeError('No Such Directory! -> %s' % sg_dir)
+
+        return sg_data
+
+    def sg_check(self):
+        """prints a report to console for files uploaded to shotgrid from specified folder
+        """
+        import os
+        import re
+
+        sg_dir = self.location_line_edit.text()
+        sg_data = self.get_sg_data(sg_dir)
+
+        if sg_data:
+            print('============== SHOT GRID CHECK ===============')
+            for sg_info in sg_data:
+                print('%s -> %s' % (sg_info[0], sg_info[1]))
+            print('==============================================')
+        else:
+            print('No SG Data found!')
 
     def get_shots_from_ui(self):
         """returns Stalker Shot instances as a list based on selection from UI
@@ -656,7 +771,7 @@ class ConformerUI(object):
         return shots
 
     def get_valid_statuses_from_ui(self):
-        """returns valisd statuses from ui
+        """returns valid statuses from ui
         """
         valid_status_names = []
 
@@ -688,8 +803,9 @@ class ConformerUI(object):
             if task_name != 'Plate':  # do not check status for plates
                 valid_status_names = self.get_valid_statuses_from_ui()
                 if task.status.name not in valid_status_names:
-                    print('%s -> %s' % (shot.name, task.status.name))
                     return None
+                else:
+                    print('%s -> %s -> %s' % (shot.name, task.name, task.status.name))
 
         task_path = task.absolute_path
         output_path = os.path.join(task_path, 'Outputs', 'Main')
@@ -1064,7 +1180,7 @@ class ConformerUI(object):
 
             # self.create_resolve_timeline_from_clips(timeline_name, clip_path_list)
 
-    def conform_shots_new(self, shots, include_slates=False, use_current_timeline=False):
+    def conform_shots_new(self, shots, include_slates=False, use_current_timeline=False, sg_check=False):
         """conforms given Stalker Shot instances from UI to a Timeline for Resolve
         """
         if shots:
@@ -1076,15 +1192,17 @@ class ConformerUI(object):
             plate_not_found_list = []
             plate_range_mismatch_list = []
             none_path_list = []
-            clip_info = None
-            start_index = None
-            end_index = None
             for shot in shots:
+                clip_info = None
+                start_index = None
+                end_index = None
+
                 print('Checking Shot... - %s' % shot.name)
 
                 result = self.get_latest_output_path(
                     shot, t_name, ext=extension, return_raw_values=True
                 )
+
                 if result:
                     clip_info = result[0]
                     start_index = result[1]
@@ -1099,7 +1217,7 @@ class ConformerUI(object):
                         start_index = result[1]
                         end_index = result[2]
 
-                if clip_info:
+                if clip_info and [clip_info, start_index, end_index] not in clip_path_list:
                     clip_path_list.append([clip_info, start_index, end_index])
                 elif clip_info is None:
                     none_path_list.append('%s -> No Outputs/Main found.' % shot.name)
@@ -1109,10 +1227,13 @@ class ConformerUI(object):
                         shot, 'Plate', ext=extension, return_raw_values=True
                     )
                     if plate_path:
-                        plate_path_list.append([plate_path, p_start_frame, p_end_frame])
+                        if [plate_path, p_start_frame, p_end_frame] not in plate_path_list:
+                            plate_path_list.append([plate_path, p_start_frame, p_end_frame])
                     elif clip_info:  # add comp or cleanup clip to match timelines
-                        plate_path_list.append([clip_info, start_index, end_index])
-                        plate_not_found_list.append(clip_info)
+                        if [clip_info, start_index, end_index] not in plate_path_list:
+                            plate_path_list.append([clip_info, start_index, end_index])
+                            if clip_info not in plate_not_found_list:
+                                plate_not_found_list.append(clip_info)
 
                 if self.record_in_check_box.isChecked():
                     rc_in = shot.record_in
@@ -1127,11 +1248,57 @@ class ConformerUI(object):
             plate_not_found_list.sort()
             plate_range_mismatch_list.sort()
 
+            existing_clip_paths = []
+            if self.exclude_clips_in_sel_clips_check_box.isChecked():
+                import os
+                existing_clips = self.resolve_project.GetMediaPool().GetCurrentFolder().GetClipList()
+                for existing_clip in existing_clips:
+                    clip_path = existing_clip.GetClipProperty('File Path')
+                    if os.path.normpath(clip_path) not in existing_clip_paths:
+                        existing_clip_paths.append(os.path.normpath(clip_path))
+
+                remove_clip_info = []
+                for clip_info in clip_path_list:
+                    clip_path = os.path.normpath(clip_info[0])
+                    if clip_path in existing_clip_paths:
+                        remove_clip_info.append(clip_info)
+                        print("clip already exists: %s  -> REMOVED" % os.path.basename(clip_path))
+                for remove_clip in remove_clip_info:
+                    clip_path_list.remove(remove_clip)
+
+                if self.plus_plates_check_box.isChecked():
+                    remove_plate_info = []
+                    for clip_info in plate_path_list:
+                        clip_path = os.path.normpath(clip_info[0])
+                        if clip_path in existing_clip_paths:
+                            remove_plate_info.append(clip_info)
+                            print("clip already exists: %s  -> REMOVED" % os.path.basename(clip_path))
+                    for remove_clip in remove_plate_info:
+                        plate_path_list.remove(remove_clip)
+
+            if self.sg_location_check_box.isChecked():
+                import os
+                remove_sg_clip_info = []
+                sg_data = self.get_sg_data(self.location_line_edit.text())
+                for clip_info in clip_path_list:
+                    clip_path = os.path.normpath(clip_info[0])
+                    clip_version_name = os.path.basename(clip_path).split('.')[0]
+                    for sg_info in sg_data:
+                        if sg_info[0] == clip_version_name:
+                            remove_sg_clip_info.append(clip_info)
+                            print("clip already submitted: %s  -> REMOVED for SHOTGRID" % clip_version_name)
+                            break
+                for remove_sg_clip in remove_sg_clip_info:
+                    clip_path_list.remove(remove_sg_clip)
+
             if plate_path_list and self.plus_plates_check_box.isChecked():
                 if len(clip_path_list) != len(plate_path_list):
                     print('--------------------------------------------------------------------------')
                     print('ERROR: Comp / Plate mismatch! Contact Supervisor.')
                     print('--------------------------------------------------------------------------')
+                    print(clip_path_list)
+                    print('--------------------------------------------------------------------------')
+                    print(plate_path_list)
                     raise RuntimeError('Comp / Plate mismatch! Contact Supervisor.')
 
                 for i in range(0, len(clip_path_list)):
@@ -1168,9 +1335,6 @@ class ConformerUI(object):
                 print('--------------------------------------------------------------------------')
 
             if clip_path_list:
-                # self.clip_paths_to_xml(clip_path_list, record_in_list, self.xml_path)
-                # print('XML CREATED----------------------------')
-                #
                 self.connect_to_resolve()
                 media_pool = self.resolve_project.GetMediaPool()
 
@@ -1189,6 +1353,7 @@ class ConformerUI(object):
                     print("clip_path  : %s" % clip_path)
                     print("start frame: %s" % start_index)
                     print("end frame  : %s" % end_index)
+
                     if extension in ['mov', 'mp4']:
                         media_pool_item = media_pool.ImportMedia([clip_path])[0]
                     else:
@@ -1216,19 +1381,30 @@ class ConformerUI(object):
                         else:
                             media_pool.AppendToTimeline([media_pool_item])
 
-                # if plate_path_list and self.plus_plates_check_box.isChecked():
-                #     print('CREATING + PLATES XML... Please Wait... ----------------------------')
-                #     self.clip_paths_to_xml(plate_path_list, record_in_list, self.xml_path)
-                #     print('+ PLATES XML CREATED----------------------------')
-                #     media_pool = self.resolve_project.GetMediaPool()
-                #     media_pool.ImportTimelineFromFile(self.xml_path)
-                #     print('+ PLATES XML IMPORTED to Resolve')
-
                 # Fix shot clip names
                 if not self.keep_ext_in_clip_names_check_box.isChecked():
                     from anima.env.resolve.shot_tools import ShotManager
                     sm = ShotManager()
                     sm.fix_shot_clip_names()
+
+                # create a new timeline for plates if specified
+                if plate_path_list and self.plus_plates_check_box.isChecked():
+                    timeline_name = '%s_Plates' % self.generate_timeline_name()
+                    print("Creating new timeline with name: %s" % timeline_name)
+                    timeline = media_pool.CreateEmptyTimeline(timeline_name)
+
+                    for clip_info in plate_path_list:
+                        clip_path = clip_info[0]
+                        start_index = clip_info[1]
+                        end_index = clip_info[2]
+                        media_pool_item = media_pool.ImportMedia([
+                            {
+                                "FilePath": clip_path,
+                                "StartIndex": start_index,
+                                "EndIndex": end_index
+                            }
+                        ])[0]
+                        media_pool.AppendToTimeline([media_pool_item])
 
             else:
                 print('No Outputs found with given specs!')
@@ -1315,19 +1491,17 @@ class ConformerUI(object):
                                 str(modification_date).split(' ')[0],
                                 last_version.updated_by.name
                             )
-                            item_data = [item_label, shot]
+                            item_data = [item_label, shot.id]
                             if not self.alpha_only_check_box.isChecked() or has_alpha is True:
                                 update_list.append(item_data)
                     except BaseException:
                         continue
 
             if update_list:
-                print("update_list: %s" % update_list)
                 update_list.sort(key=lambda x: x[0])
-                for i, item_data in enumerate(update_list):
-                    self.updated_shot_list.addItem(item_data[0])
-                    item = self.updated_shot_list.item(i)
-                    item.setData(QtCore.Qt.EditRole, item_data[1])
+                print("update_list: %s" % update_list)
+                for item in update_list:
+                    self.updated_shot_list.addItem(self.add_data_as_text_to_ui(item[0], item[1]))
             else:
                 self.updated_shot_list.addItem('No Updated Shots found after specified date / ui specs.')
 
@@ -1338,19 +1512,36 @@ class ConformerUI(object):
         include_slates = self.slated_check_box.isChecked()
         record_in = self.record_in_check_box.isChecked()
         use_current_timeline = self.use_current_timeline.isChecked()
+        sg_check = self.sg_location_check_box.isChecked()
         if record_in:
             self.conform_shots(shots)
         else:
-            self.conform_shots_new(shots, include_slates=include_slates, use_current_timeline=use_current_timeline)
+            self.conform_shots_new(shots,
+                                   include_slates=include_slates,
+                                   use_current_timeline=use_current_timeline,
+                                   sg_check=sg_check)
 
     def conform_updated_shots(self):
         """conforms only updated shots from listWidget in UI
         """
+        from stalker import Shot
+
         shots = []
-        for i in range(self.updated_shot_list.count()):
+        include_slates = self.slated_check_box.isChecked()
+        record_in = self.record_in_check_box.isChecked()
+        use_current_timeline = self.use_current_timeline.isChecked()
+        sg_check = self.sg_location_check_box.isChecked()
+        for i in range(0, self.updated_shot_list.count()):
             item = self.updated_shot_list.item(i)
-            shot = item.data()
+            shot_id = self.get_id_from_data_text(item.text())
+            shot = Shot.query.get(shot_id)
             if shot:
                 shots.append(shot)
 
-        self.conform_shots(shots)
+        if record_in:
+            self.conform_shots(shots)
+        else:
+            self.conform_shots_new(shots,
+                                   include_slates=include_slates,
+                                   use_current_timeline=use_current_timeline,
+                                   sg_check=sg_check)
