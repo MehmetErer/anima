@@ -827,6 +827,27 @@ class ConformerUI(object):
         except IndexError:
             pass
 
+        file_paths = None
+        def get_file_paths(op, ext, ltn): #  output_path, ext, latest_task_name
+            import glob
+
+            paths = None
+            if not self.alpha_only_check_box.isChecked():
+                paths = glob.glob("%s/*/%s/*%s.*.%s" % (op, ext, ltn, ext))
+                if not paths:  # try outputs with no version folders
+                    paths = glob.glob("%s/%s/*%s.*.%s" % (op, ext, ltn, ext))
+                if not paths:  # try video files (mov, mp4)
+                    paths = glob.glob("%s/*/%s/*%s.%s" % (op, ext, ltn, ext))
+            else:  # check for paths that contain "alpha" as text
+                version_folder = ltn.split('_')[-1]
+                paths = glob.glob("%s/%s/%s/*%s*.*.%s" % (op, version_folder, ext, 'alpha', ext))
+                if not paths:  # try outputs with no version folders
+                    paths = glob.glob("%s/%s/*%s*%s.*.%s" % (op, ext, 'alpha', version_folder, ext))
+                if not paths:  # try video files (mov, mp4)
+                    paths = glob.glob("%s/*/%s/*%s.%s" % (op, ext, ltn, ext))
+
+            return paths
+
         if latest_version:
             latest_version_name = os.path.splitext(latest_version.filename)[0]
             latest_v = True
@@ -834,24 +855,36 @@ class ConformerUI(object):
                     .order_by(Version.version_number.desc()):
                 latest_task_name = os.path.splitext(latest_task_version.filename)[0]
 
-                if not self.alpha_only_check_box.isChecked():
-                    file_paths = glob.glob("%s/*/%s/*%s.*.%s" % (output_path, ext, latest_task_name, ext))
-                    if not file_paths:  # try outputs with no version folders
-                        file_paths = glob.glob("%s/%s/*%s.*.%s" % (output_path, ext, latest_task_name, ext))
-                    if not file_paths:  # try video files (mov, mp4)
-                        file_paths = glob.glob("%s/*/%s/*%s.%s" % (output_path, ext, latest_task_name, ext))
-                else:  # check for paths that contain "alpha" as text
-                    version_folder = latest_task_name.split('_')[-1]
-                    file_paths = glob.glob("%s/%s/%s/*%s*.*.%s" % (output_path, version_folder, ext, 'alpha', ext))
-                    if not file_paths:  # try outputs with no version folders
-                        file_paths = glob.glob("%s/%s/*%s*%s.*.%s" % (output_path, ext, 'alpha', version_folder, ext))
-                    if not file_paths:  # try video files (mov, mp4)
-                        file_paths = glob.glob("%s/*/%s/*%s.%s" % (output_path, ext, latest_task_name, ext))
+                file_paths = get_file_paths(op=output_path, ext=ext, ltn=latest_task_name)
+
                 if file_paths:
                     if latest_v is False:
                         found_version_name = latest_task_name
                     break
                 latest_v = False
+        else: # try to get latest version paths manually for projects that use unsupported software
+            v_nice_name = '%s_%s_Main' % (shot.name, task.name)
+            all_paths = glob.glob("%s/*/%s/*" % (output_path, ext))
+
+            base_names = []
+            versions = []
+            for path in all_paths:
+                base_name = os.path.basename(path).split('.')[0]
+                if base_name not in base_names \
+                        and base_name.startswith(v_nice_name) \
+                        and base_name.split('_')[-1][0] == 'v' \
+                        and base_name.split('_')[-1][-1:].isdigit():
+                    base_names.append(base_name)
+            for base_name in base_names:
+                try:
+                    version_str = base_name.split('_')[-1]
+                    versions.append(int(version_str[-1:]))
+                except (ValueError, IndexError):
+                    pass
+
+            if versions:
+                latest_task_name = '%s_v%s' % (v_nice_name, str(max(versions)).rjust(3, '0'))
+                file_paths = get_file_paths(op=output_path, ext=ext, ltn=latest_task_name)
 
         if latest_version_name and found_version_name:
             print("%s NOT FOUND! -> %s 's output will be used." % (latest_version_name, found_version_name))
