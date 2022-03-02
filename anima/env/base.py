@@ -606,10 +606,24 @@ class EnvironmentBase(object):
 
         :rtype : basestring
         """
+        # TODO: all output paths seem to be generated from this definition so vendor code can be added here.
+        #  But vendor code can be queried from a better stalker instance like FilenameTemplate.
+        vendor_code = None
+        try:  # if a project has a Production House type Client instance get vendor code from it's generic_text
+            for client in version.task.project.clients:
+                if client.type.name == 'Production House':
+                    vendor_code = client.generic_text
+                    break
+        except AttributeError:
+            pass
+
         if include_project_code:
             sig_name = '%s_%s' % (version.task.project.code, version.nice_name)
         else:
             sig_name = version.nice_name
+
+        if vendor_code:
+            sig_name = '%s_%s' % (sig_name, vendor_code)
 
         if include_version_number:
             sig_name = '%s_v%03d' % (sig_name, version.version_number)
