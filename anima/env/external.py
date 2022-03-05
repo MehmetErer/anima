@@ -38,6 +38,17 @@ external_environments = {
             'Outputs',
         ]
     },
+    'Flame': {
+        'name': 'Flame',
+        'icon': 'flame.png',
+        'executable': {
+            'linux': 'None',
+        },
+        'extensions': ['.flm'],
+        'structure': [
+            'Outputs', 'version.take_name', "'v%03d' % version.version_number", 'exr'
+        ]
+    }
 }
 
 
