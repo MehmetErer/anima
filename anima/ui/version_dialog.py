@@ -182,11 +182,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         """
 
         # TODO: This is a very dirty fix, do it properly
-        if self.environment.name.lower().startswith("houdini"):
-            style_sheet += """QGroupBox{
-                margin: 0px;
-            }
-            """
+        if self.environment:
+            if self.environment.name.lower().startswith("houdini"):
+                style_sheet += """QGroupBox{
+                    margin: 0px;
+                }
+                """
 
         self.setStyleSheet(style_sheet)
 
@@ -397,8 +398,9 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         # Publish Push Button
         self.publish_push_button = QtWidgets.QPushButton(self)
         self.publish_push_button.setText("Publish")
-        if not self.environment.has_publishers:
-            self.publish_push_button.setText("Publish")
+        if self.environment:
+            if not self.environment.has_publishers:
+                self.publish_push_button.setText("Publish")
         self.save_as_buttons_layout.addWidget(self.publish_push_button)
 
         # Close Push Button
@@ -1045,6 +1047,9 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         # add Browse Outputs
         browse_path_action = menu.addAction("Browse Path...")
         browse_outputs_action = menu.addAction("Browse Outputs...")
+        create_output_path_action = menu.addAction("Create Output Path...")
+        if self.environment: # disable this action if this is not an external environment
+            create_output_path_action.setEnabled(False)
         upload_output_action = menu.addAction("Upload Output...")
         copy_path_action = menu.addAction("Copy Path")
         rerender_path_variables_action = \
@@ -1056,6 +1061,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         if not item:
             browse_path_action.setEnabled(False)
             browse_outputs_action.setEnabled(False)
+            create_output_path_action.setEnabled(False)
             upload_output_action.setEnabled(False)
             copy_path_action.setEnabled(False)
             rerender_path_variables_action.setEnabled(False)
@@ -1223,6 +1229,61 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
                         "Error",
                         "Path doesn't exists:\n%s" % path
                     )
+            elif choice == "Create Output Path...":
+                if not self.environment: # do this only in environmentless mode
+                    from anima.env.base import EnvironmentBase
+                    from anima.env.external import ExternalEnvFactory
+                    env = EnvironmentBase()
+                    env_factory = ExternalEnvFactory()
+                    env_name = self.environment_combo_box.currentText()
+                    environment = env_factory.get_env(
+                        env_name,
+                        self.environment_name_format
+                    )
+
+                    structure = environment.structure
+                    evaluated_structure = []
+                    for item in structure:
+                        try:
+                            eval_item = eval(item)
+                            evaluated_structure.append(eval(item))
+                        except NameError:
+                            evaluated_structure.append(item)
+
+                    output_filename = env.get_significant_name(version, include_project_code=False)
+                    if evaluated_structure[-1] in ['exr', 'jpg', 'jpeg', 'png', 'tga', 'tif', 'tiff']:
+                        output_filename = '%s.1001.%s' % (output_filename, evaluated_structure[-1])
+                    output_path = '/'.join(evaluated_structure)
+                    output_file_path = os.path.join(
+                        version.absolute_path,
+                        output_path,
+                        output_filename
+                    ).replace('\\', '/')
+
+                    try:
+                        os.makedirs(os.path.dirname(output_file_path))
+                    except OSError:
+                        pass
+
+                    if os.path.isdir(os.path.dirname(output_file_path)):
+                        utils.open_browser_in_location(os.path.dirname(output_file_path))
+
+                        clipboard = QtWidgets.QApplication.clipboard()
+                        clipboard.setText(output_file_path)
+
+                        QtWidgets.QMessageBox.information(
+                            self,
+                            "Output Path Generated as...",
+                            "\n\n%s\n\n"
+                            "It is copied to your clipboard!" % output_file_path,
+                            QtWidgets.QMessageBox.Ok
+                        )
+                    else:
+                        QtWidgets.QMessageBox.critical(
+                            self,
+                            "Error",
+                            "Output Path can NOT be generated !!!"
+                        )
             elif choice == "Upload Output...":
                 # upload output to the given version
                 # show a file browser
@@ -1275,8 +1336,19 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
                 # update version info
                 # set to the base extension
                 version.update_paths()
-                version.extension = self.environment.extensions[0]
-                version.created_with = self.environment.name
+                if self.environment:
+                    version.extension = self.environment.extensions[0]
+                    version.created_with = self.environment.name
+                else:
+                    from anima.env.external import ExternalEnvFactory
+                    env_factory = ExternalEnvFactory()
+                    env_name = self.environment_combo_box.currentText()
+                    environment = env_factory.get_env(
+                        env_name,
+                        self.environment_name_format
+                    )
+                    version.extension = environment.extensions[0]
+                    version.created_with = environment.name
 
                 from stalker.db.session import DBSession
                 try:
