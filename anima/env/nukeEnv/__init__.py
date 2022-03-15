@@ -299,9 +299,7 @@ class Nuke(EnvironmentBase):
                 main_write_node["colorspace"].setValue(104)  # Output - Rec.709
 
             # set the output path
-            output_file_name = '%s_v%03d' % (
-                version.nice_name, version.version_number
-            )
+            output_file_name = self.get_significant_name(version, include_project_code=False)
 
             if output_format_enum == 'mov':
                 output_file_name = '%s.%s' % (output_file_name, output_format_enum)
