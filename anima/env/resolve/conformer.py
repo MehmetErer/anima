@@ -792,6 +792,7 @@ class ConformerUI(object):
         import os
         import glob
         import re
+        from anima.env import base
         from stalker import Task, Version
         task = Task.query.filter(Task.parent == shot).filter(Task.name == task_name).first()
         if not task and task_name == 'Comp':  # try Cleanup task
@@ -849,11 +850,13 @@ class ConformerUI(object):
             return paths
 
         if latest_version:
-            latest_version_name = os.path.splitext(latest_version.filename)[0]
+            latest_version_name = base.EnvironmentBase.get_significant_name(latest_version,
+                                                                            include_project_code=False)
             latest_v = True
             for latest_task_version in Version.query.filter(Version.task == task).filter(Version.take_name == 'Main') \
                     .order_by(Version.version_number.desc()):
-                latest_task_name = os.path.splitext(latest_task_version.filename)[0]
+                latest_task_name = base.EnvironmentBase.get_significant_name(latest_task_version,
+                                                                             include_project_code=False)
 
                 file_paths = get_file_paths(op=output_path, ext=ext, ltn=latest_task_name)
 
