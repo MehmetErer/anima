@@ -27,13 +27,19 @@ def common_prefix(*sequences):
     # loop in parallel on the sequences
     common = []
     import itertools
-    for elements in itertools.izip(*sequences):
-        # unless all elements are equal, bail out of the loop
-        if not all_equal(elements):
-            break
+    try:  # Python2
+        for elements in itertools.izip(*sequences):
+            # unless all elements are equal, bail out of the loop
+            if not all_equal(elements):
+                break
 
-        # got one more common element, append it and keep looping
-        common.append(elements[0])
+            # got one more common element, append it and keep looping
+            common.append(elements[0])
+    except AttributeError:  # Python3 (izip -> zip_longest)
+        for elements in itertools.zip_longest(*sequences):
+            if not all_equal(elements):
+                break
+            common.append(elements[0])
 
     # return the common prefix and unique tails
     return common, [sequence[len(common):] for sequence in sequences]
