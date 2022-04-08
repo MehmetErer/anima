@@ -8,7 +8,7 @@ from anima import utils
 utils.do_db_setup()
 
 # iterate over environment and set it in TCL
-for key, value in os.environ.iteritems():
+for key, value in os.environ.items():
     try:
         nuke.tcl("set", str(key), str(value))
     except RuntimeError:
