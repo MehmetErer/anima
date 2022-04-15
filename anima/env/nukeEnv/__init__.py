@@ -288,7 +288,10 @@ class Nuke(EnvironmentBase):
                 main_write_node.knob('file_type').setValue(output_format_enum)
 
                 # set default attributes
-                main_write_node["colorspace"].setValue(1)   # ACES 2065-1
+                if int(nuke.NUKE_VERSION_MAJOR) < 13:
+                    main_write_node["colorspace"].setValue(1)   # ACES 2065-1
+                else:
+                    main_write_node["colorspace"].setValue(6)  # ACES 2065-1
                 main_write_node["datatype"].setValue(0)     # 16 bit half
                 main_write_node["compression"].setValue(1)  # Zip (1 scanline)
             elif output_format_enum == 'ffmpeg':
