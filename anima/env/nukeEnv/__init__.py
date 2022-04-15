@@ -433,12 +433,21 @@ Status: {{version.task.status.name}}
         """updates color management
         """
         root = self.get_root_node()
-        root["colorManagement"].setValue(1)  # OCIO
-        # root["OCIO_config"].setValue(6)      # Custom
-        # root["OCIOConfigPath"].setValue("[getenv ANIMA_DEV_PATH]/OpenColorIO-Configs/aces_1.1/config.ocio")
-        root["workingSpaceLUT"].setValue(0)  # ACES 2065-1
-        root["monitorLut"].setValue(0)       # sRGB
-        root["int8Lut"].setValue(148)        # Utility - sRGB - Texture
-        root["int16Lut"].setValue(148)       # Utility - sRGB - Texture
-        root["logLut"].setValue(5)           # Input - ADX - ADX10
-        root["floatLut"].setValue(0)         # ACES 2065-1
+        if int(nuke.NUKE_VERSION_MAJOR) < 13:
+            root["colorManagement"].setValue(1)  # OCIO
+            # root["OCIO_config"].setValue(6)      # Custom
+            # root["OCIOConfigPath"].setValue("[getenv ANIMA_DEV_PATH]/OpenColorIO-Configs/aces_1.1/config.ocio")
+            root["workingSpaceLUT"].setValue(0)  # ACES 2065-1
+            root["monitorLut"].setValue(0)       # sRGB 5
+            root["int8Lut"].setValue(148)        # Utility - sRGB - Texture
+            root["int16Lut"].setValue(148)       # Utility - sRGB - Texture
+            root["logLut"].setValue(5)           # Input - ADX - ADX10
+            root["floatLut"].setValue(0)         # ACES 2065-1
+        else:
+            root["colorManagement"].setValue(1)  # OCIO
+            root["workingSpaceLUT"].setValue(5)  # ACES 2065-1
+            root["monitorLut"].setValue(0)  # sRGB
+            root["int8Lut"].setValue(6)  # Utility - sRGB - Texture
+            root["int16Lut"].setValue(5)  # Utility - sRGB - Texture
+            root["logLut"].setValue(3)  # Input - ADX - ADX10
+            root["floatLut"].setValue(5)  # ACES 2065-1
