@@ -922,9 +922,29 @@ class ShotClip(object):
         #     print("No valid shot!")
         #     return
 
+        # TODO: this is becoming an issue vendor code must be queried from FileStructureTemplate
+        # get vendor codes to exclude from version_file_name
+        from stalker import Client
+        vendor_codes = []
+        for client in Client.query.all():
+            if client.type.name == 'Production House':
+                vendor_codes.append(client.generic_text)
+
         # Try to get a version with this clip path
         version_output_name = self.clip.GetName()
         version_file_name = version_output_name.split('.')[0]
+
+        # remove the vendor code from version_file_name
+        remove_code = None
+        parts = version_file_name.split('_')
+        for part in parts:
+            if part in vendor_codes:
+                remove_code = part
+                break
+        if remove_code:
+            parts.remove(remove_code)
+            version_file_name = '_'.join(parts)
+
         from stalker import Version
         version = Version.query\
             .filter(Version.full_path.contains(version_file_name))\
