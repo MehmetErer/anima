@@ -48,6 +48,17 @@ external_environments = {
         'structure': [
             'Outputs', 'version.take_name', "'v%03d' % version.version_number", 'exr'
         ]
+    },
+    'AfterEffects': {
+        'name': 'AfterEffects',
+        'icon': 'aftereffects.png',
+        'executable': {
+            'windows': 'afterfx.exe',
+        },
+        'extensions': ['.aep'],
+        'structure': [
+            'Outputs', 'version.take_name', "'v%03d' % version.version_number", 'exr'
+        ]
     }
 }
 
