@@ -1217,6 +1217,14 @@ class ShotManagerUI(object):
         update_shot_thumbnail_button.clicked.connect(partial(self.update_shot_thumbnail_callback))
         color_list.next()
 
+        # Update Shot Thumbnails button
+        update_shot_thumbnails_button = QtWidgets.QPushButton(self.parent_widget)
+        update_shot_thumbnails_button.setText("Update All Shot Thumbnails from Timeline")
+        self.main_layout.addWidget(update_shot_thumbnails_button)
+        set_widget_bg_color(update_shot_thumbnails_button, color_list)
+        update_shot_thumbnails_button.clicked.connect(partial(self.update_shot_thumbnails_callback))
+        color_list.next()
+
         # Update Shot Record In button
         update_shot_record_in_info_button = QtWidgets.QPushButton(self.parent_widget)
         update_shot_record_in_info_button.setText("Update Shot Record-In Info")
@@ -1462,6 +1470,74 @@ class ShotManagerUI(object):
                 "Updated shot thumbnail 👍",
                 "Updated shot thumbnail 👍"
             )
+
+    def update_shot_thumbnails_callback(self):
+        """callback function for update_shot_thumbnails_button
+        """
+        from anima import utils
+        from anima.env import blackmagic
+        from PIL import Image
+        import tempfile
+        import os
+
+        temp = tempfile.gettempdir()
+        project, sequence = self.get_project_and_sequence()
+        sm = ShotManager(project, sequence)
+        media_pool = sm.resolve_project.GetMediaPool()
+        resolve = blackmagic.get_resolve()
+        current_page = resolve.GetCurrentPage()
+
+        version_info = resolve.GetVersion()
+        version_number = version_info[0] * 100 + version_info[1]
+        if version_number < 1703:
+            QtWidgets.QMessageBox.critical(
+                self.parent_widget,
+                "Shot thumbnails will NOT be updated!",
+                "This script only works in Resolve 17.3 and upper versions."
+            )
+            return
+
+        i = 0
+        clips = sm.get_shot_clips()
+        for shot_clip in clips:
+            i += 1
+            timeline = media_pool.CreateEmptyTimeline('ThumbnailUpdate__TEMP_Timeline')
+            media_pool.AppendToTimeline([shot_clip.clip.GetMediaPoolItem()])
+            sc = None
+            try:
+                temp_sm = ShotManager(project, sequence)
+                temp_sm.validate_shot_codes()
+                temp_clip = temp_sm.get_shot_clips()[0]
+                sc = temp_clip.shot_code
+                shot = temp_clip.get_shot()
+                if shot:
+                    timeline.GrabAllStills(2)  # mid-frame
+                    gallery = temp_sm.resolve_project.GetGallery()
+                    album = gallery.GetCurrentStillAlbum()
+                    stills = album.GetStills()
+                    album.ExportStills(stills, temp, '%s__stalker_thumbnail' % sc, 'jpg')
+                    album.DeleteStills(stills)
+                    # optimize thumbnail size
+                    thumbnail_full_path = os.path.join(temp, '%s__stalker_thumbnail_1.1.1.jpg' % sc)
+                    img = Image.open(thumbnail_full_path)
+                    div = 1
+                    if img.size[0] > 300:
+                        div = int(img.size[0]/300)
+                    img.thumbnail((img.size[0]/div, img.size[1]/div), Image.ANTIALIAS)
+                    img.save(thumbnail_full_path, quality=80)
+                    # upload thumbnail
+                    utils.upload_thumbnail(shot, thumbnail_full_path)
+                    # delete thumbnail from temp path
+                    try:
+                        os.remove(thumbnail_full_path)
+                    except OSError:
+                        pass
+                    print('%s -> Thumbnail updated. %i/%i' % (temp_clip.shot_code, i, len(clips)))
+            except BaseException:
+                print('ERROR: Thumbnail can NOT be updated! -> %s.' % sc)
+            media_pool.DeleteTimelines([timeline])
+        print('THUMBNAIL UPDATE FINISHED')
+        resolve.OpenPage(current_page)
 
     def update_shot_record_in_info_callback(self):
         """callback function for update_shot_record_in_button
