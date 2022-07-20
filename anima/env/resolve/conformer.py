@@ -922,10 +922,10 @@ class ConformerUI(object):
                     pads.append(len(pad))
                 frame = int(pad)
                 frames.append(frame)
-            start_frame = str(min(frames)).rjust(min(pads), '0')
-            end_frame = str(max(frames)).rjust(max(pads), '0')
-            resolve_path = '%s.[%s-%s].%s' % (dir_base, start_frame, end_frame, ext)
-            resolve_raw_path = '%s.%s.%s' % (dir_base, '%0{digits}d'.format(digits=len(start_frame)), ext)
+            start = str(min(frames)).rjust(min(pads), '0')
+            end = str(max(frames)).rjust(max(pads), '0')
+            resolve_path = '%s.[%s-%s].%s' % (dir_base, start, end, ext)
+            resolve_raw_path = '%s.%s.%s' % (dir_base, '%0{digits}d'.format(digits=len(start)), ext)
             if ext in ['mov', 'mp4']:
                 first_dir_base = os.path.splitext(file_paths[0])[0]
                 last_dir_base = os.path.splitext(file_paths[-1])[0]
@@ -936,9 +936,11 @@ class ConformerUI(object):
                     resolve_path = '%s.%s' % (dir_base, ext)
                     resolve_raw_path = '%s.%s' % (dir_base, ext)
             resolve_path = os.path.normpath(resolve_path).replace('\\', '/')
+            start_frame = int(start)
+            end_frame = int(end)
 
         if return_raw_values:
-            return [resolve_raw_path, int(start_frame), int(end_frame)]
+            return [resolve_raw_path, start_frame, end_frame]
         else:
             return resolve_path
 
