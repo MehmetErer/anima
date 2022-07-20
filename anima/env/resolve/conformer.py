@@ -829,7 +829,8 @@ class ConformerUI(object):
             pass
 
         file_paths = None
-        def get_file_paths(op, ext, ltn): #  output_path, ext, latest_task_name
+
+        def get_file_paths(op, ext, ltn):  # output_path, ext, latest_task_name
             import glob
 
             paths = None
@@ -914,15 +915,17 @@ class ConformerUI(object):
             regex = r'\d+$|#+$'
             dir_base = file_paths[0].split('.')[0]
             frames = []
+            pads = []
             for f in file_paths:
-                frame = int(re.findall(regex, os.path.splitext(f)[0])[0])
+                pad = re.findall(regex, os.path.splitext(f)[0])[0]
+                if len(pad) not in pads:  # handle padding mismatch
+                    pads.append(len(pad))
+                frame = int(pad)
                 frames.append(frame)
-            start_frame = min(frames)
-            end_frame = max(frames)
-            first_dir_base = '%s.%s.%s' % (dir_base, str(start_frame), ext)
-            last_dir_base = '%s.%s.%s' % (dir_base, str(end_frame), ext)
+            start_frame = str(min(frames)).rjust(min(pads), '0')
+            end_frame = str(max(frames)).rjust(max(pads), '0')
             resolve_path = '%s.[%s-%s].%s' % (dir_base, start_frame, end_frame, ext)
-            resolve_raw_path = '%s.%s.%s' % (dir_base, '%0{digits}d'.format(digits=len(str(start_frame))), ext)
+            resolve_raw_path = '%s.%s.%s' % (dir_base, '%0{digits}d'.format(digits=len(start_frame)), ext)
             if ext in ['mov', 'mp4']:
                 first_dir_base = os.path.splitext(file_paths[0])[0]
                 last_dir_base = os.path.splitext(file_paths[-1])[0]
@@ -935,7 +938,7 @@ class ConformerUI(object):
             resolve_path = os.path.normpath(resolve_path).replace('\\', '/')
 
         if return_raw_values:
-            return [resolve_raw_path, start_frame, end_frame]
+            return [resolve_raw_path, int(start_frame), int(end_frame)]
         else:
             return resolve_path
 
