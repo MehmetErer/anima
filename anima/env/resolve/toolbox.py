@@ -477,6 +477,8 @@ class GenericTools(object):
         "%{Clip Name}",
         "%{Clip Base Name}_Denoised",
         "%{Timeline Name}_CL%{Clip #}_v001",
+        "%{Marker Note}_Plate_Main_v001.",
+        "%{Marker Note}_Plate_%{Track Name}_v001."
     ]
 
     @classmethod
