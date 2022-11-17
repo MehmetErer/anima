@@ -28,8 +28,6 @@ def version_dialog(mode=2):
 
     from anima.ui import version_dialog
     from anima.env import houdini
-    reload(houdini)
-    reload(version_dialog)
 
     h = houdini.Houdini()
 
