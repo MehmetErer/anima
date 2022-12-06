@@ -265,6 +265,10 @@ class Fusion(EnvironmentBase):
         # set the extension to '.comp'
         # refresh the current comp
         self.comp = self.fusion.GetCurrentComp()
+
+        # check all other savers except for main write nodes
+        self.check_other_saver_nodes()
+
         from stalker import Version
         assert isinstance(version, Version)
         # its a new version please update the paths
@@ -279,16 +283,11 @@ class Fusion(EnvironmentBase):
         # set range from the shot
         self.set_range_from_shot(version)
 
-        # check if all savers are main write nodes
-        # TODO: fix check_other_saver_nodes()
-        # self.check_other_saver_nodes()
-
         # create the main write node
         self.create_main_saver_node(version)
 
         # add stalker shot instance notes as fusion sticky note
-        # TODO: fix create_shot_notes_sticky_note()
-        # self.create_shot_notes_sticky_note(version)
+        self.create_shot_notes_sticky_note(version, 97.0, 51.0)
 
         # replace read and write node paths
         # self.replace_external_paths()
@@ -600,33 +599,50 @@ class Fusion(EnvironmentBase):
         # list all the saver nodes in the current file
         all_saver_nodes = self.comp.GetToolList(False, 'Saver').values()
 
+        output_formats = ['exr', 'jpg', 'tga', 'mov', 'mp4']
+        allowed_saver_nodes = []
+        for format in output_formats:
+            allowed_saver_nodes.append(self.output_node_name_generator(format))
+
         saver_nodes = []
         for saver_node in all_saver_nodes:
-            if saver_node.GetAttrs('TOOLS_Name').startswith(self._main_output_node_name):
+            if saver_node.GetAttrs('TOOLS_Name') in allowed_saver_nodes:
                 saver_nodes.append(saver_node)
 
         return saver_nodes
 
     def check_other_saver_nodes(self):
-        """Returns all saver nodes except the main saver nodes in the scene or an empty list.
-        :return: list
+        """changes flow node color of all saver nodes except the main saver nodes.
         """
-        # list all the saver nodes in the current file
+        saver_nodes = self.get_main_saver_node()
         all_saver_nodes = self.comp.GetToolList(False, 'Saver').values()
 
-        saver_nodes = []
-        for saver_node in all_saver_nodes:
-            if not saver_node.GetAttrs('TOOLS_Name').startswith(self._main_output_node_name):
-                saver_nodes.append(saver_node.GetAttrs('TOOLS_Name'))
+        saver_node_names = []
+        for saver_node in saver_nodes:
+            saver_node_names.append(saver_node.GetAttrs('TOOLS_Name'))
 
+        other_saver_nodes = []
+        for saver_node in all_saver_nodes:
+            if saver_node.GetAttrs('TOOLS_Name') not in saver_node_names:
+                other_saver_nodes.append(saver_node)
+
+        # colorize other saver nodes
+        violet = {'B': 0.803921568627451, 'R': 0.5843137254901961, 'G': 0.29411764705882354}
+        for saver_node in other_saver_nodes:
+            saver_node.TileColor = violet
+        # get node names
+        other_saver_node_names = []
+        for saver_node in other_saver_nodes:
+            other_saver_node_names.append(saver_node.GetAttrs('TOOLS_Name'))
+        # prompt user
         if saver_nodes:
-            answer = self.comp.AskUser('There are extra saver nodes. Continue ?', {
+            answer = self.comp.AskUser('There are custom Saver Nodes in Flow. Continue ?', {
                 1: {
-                    1: 'Manually Added Saver Nodes:',
+                    1: 'Saver Nodes Are:',
                     2: 'Text',
-                    'Lines': len(saver_nodes),
+                    'Lines': len(other_saver_nodes),
                     'Default': '\n'.join(
-                        map(lambda x: '%s' % x, saver_nodes)
+                        map(lambda x: '%s' % x, other_saver_node_names)
                     ),
                 }
             })
@@ -711,7 +727,8 @@ class Fusion(EnvironmentBase):
         if 'connected_to' in node_tree:
             connected_to = node_tree['connected_to']
             if 'Input' in connected_to:
-                pos_x -= 1  # create connected nodes to the left
+                if pos_x:
+                    pos_x -= 1  # create connected nodes to the left
                 input_node = self.create_node_tree(connected_to['Input'], pos_x, pos_y)
                 node.Input = input_node
             elif 'ref_id' in node_tree['connected_to']:
@@ -910,13 +927,15 @@ class Fusion(EnvironmentBase):
 
         return slate_node
 
-    def create_shot_notes_sticky_note(self, version):
+    def create_shot_notes_sticky_note(self, version, pos_x=None, pos_y=None):
         """ Creates a sticky note in flow view from stalker shot notes
         :param version: stalker Version instance
+        :param pos_x: position x of the node in flow view
+        :param pos_y: position y of the node in flow view
         """
         note_node_name = '__Shot_Notes__'
-        note = None
-        notes = ''
+        shot_note_node = None
+        notes_as_text = ''
 
         # check if this is a shot related task
         is_shot_related_task = False
@@ -931,19 +950,21 @@ class Fusion(EnvironmentBase):
         if is_shot_related_task is True:
             try:
                 for note in shot.notes:
-                    notes += '%s\n\n' % note
+                    notes_as_text += '%s\n\n' % note.content
             except (IndexError, AttributeError):
                 pass
 
         all_notes = self.comp.GetToolList(False, 'Note').values()
-        for note in all_notes:
-            if note.GetAttrs('Tools_Name') == note_node_name:
-                note.SetInput('Comments', notes, 1001)
+        for note_node in all_notes:
+            if note_node.GetAttrs('TOOLS_Name') == note_node_name:
+                shot_note_node = note_node
+                shot_note_node.SetInput('Comments', notes_as_text, 1001)
                 break
-        if not note and notes != '':
-            note = self.comp.AddTool('Note', 97, 51)
+
+        if shot_note_node is None and notes_as_text != '':
+            note = self.comp.AddTool('Note', pos_x, pos_y)
             note.SetAttrs({'TOOLS_Name': note_node_name})
-            note.SetInput('Comments', notes, 1001)
+            note.SetInput('Comments', notes_as_text, 1001)
 
     def create_main_saver_node(self, version):
         """Creates the default saver node if there is no created before.
@@ -958,27 +979,10 @@ class Fusion(EnvironmentBase):
 
         import uuid
         ocio_out_id = uuid.uuid4().hex
-        ocio_in_id = uuid.uuid4().hex
 
         output_format_data = [
             {
-                'name': 'OCIOColorspace_RENDER',
-                'ref_id': ocio_in_id,
-                'position_x': 96.0,
-                'position_y': 49.0,
-                'node_tree': {
-                    'type': 'OCIOColorSpace',
-                    'attr': {
-                        'TOOLS_Name': 'OCIOColorspace_RENDER',
-                    },
-                    'input_list': {
-                        'OCIOConfig': 'LUTs:/OpenColorIO-Configs/aces_1.2/config.ocio',
-                        'SourceSpace': 'ACES - ACEScg',
-                        'OutputSpace': 'ACES - ACES2065-1',
-                    },
-                },
-            },
-            {
+                'has_ocio_in': True,
                 'name': 'mov',
                 'position_x': 100.0,
                 'position_y': 50.0,
@@ -1178,6 +1182,8 @@ class Fusion(EnvironmentBase):
             output_format_data = [
                 {
                     'name': 'jpg',
+                    'position_x': 100.0,
+                    'position_y': 50.0,
                     'node_tree': {
                         'type': 'Saver',
                         'attr': {
@@ -1218,6 +1224,8 @@ class Fusion(EnvironmentBase):
                 },
                 {
                     'name': 'exr',
+                    'position_x': 100.0,
+                    'position_y': 49.0,
                     'node_tree': {
                         'type': 'Saver',
                         'attr': {
@@ -1272,6 +1280,8 @@ class Fusion(EnvironmentBase):
                 },
                 {
                     'name': 'mov',
+                    'position_x': 100.0,
+                    'position_y': 51.0,
                     'node_tree': {
                         'type': 'Saver',
                         'attr': {
@@ -1326,6 +1336,8 @@ class Fusion(EnvironmentBase):
             output_format_data = [
                 {
                     'name': 'exr',
+                    'position_x': 100.0,
+                    'position_y': 50.0,
                     'node_tree': {
                         'type': 'Saver',
                         'attr': {
@@ -1375,9 +1387,36 @@ class Fusion(EnvironmentBase):
                 "Comp.FrameFormat.DepthLock": True,
             })
 
+        # create or update OCIOColorSpace_RENDER node as separated alone in flow view if exists in data
+        has_ocio_in = False
+        for data in output_format_data:
+            try:
+                if data['has_ocio_in'] is True:
+                    has_ocio_in = True
+                    break
+            except KeyError:
+                pass
+
+        if has_ocio_in is True:
+            ocio_in_name = 'OCIOColorSpace_RENDER'
+            ocio_in_node = None
+            all_ocio_nodes = self.comp.GetToolList(False, 'OCIOColorSpace').values()
+            for ocio_node in all_ocio_nodes:
+                if ocio_node.GetAttrs('TOOLS_Name') == ocio_in_name:
+                    ocio_in_node = ocio_node
+                    ocio_in_node.SetInput('OCIOConfig', 'LUTs:/OpenColorIO-Configs/aces_1.2/config.ocio')
+                    ocio_in_node.SetInput('SourceSpace', 'ACES - ACEScg')
+                    ocio_in_node.SetInput('OutputSpace', 'ACES - ACES2065-1')
+                    break
+            if ocio_in_node is None:
+                ocio_in_node = self.comp.AddTool('OCIOColorSpace', 96, 49)
+                ocio_in_node.SetAttrs({'TOOLS_Name': ocio_in_name})
+                ocio_in_node.SetInput('OCIOConfig', 'LUTs:/OpenColorIO-Configs/aces_1.2/config.ocio')
+                ocio_in_node.SetInput('SourceSpace', 'ACES - ACEScg')
+                ocio_in_node.SetInput('OutputSpace', 'ACES - ACES2065-1')
+
         # selectively generate output format
         saver_nodes = self.get_main_saver_node()
-        saver_nodes += self.comp.GetToolList(False, 'OCIOColorSpace').values()
 
         for data in output_format_data:
             format_name = data['name']
