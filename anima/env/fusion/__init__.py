@@ -279,8 +279,16 @@ class Fusion(EnvironmentBase):
         # set range from the shot
         self.set_range_from_shot(version)
 
+        # check if all savers are main write nodes
+        # TODO: fix check_other_saver_nodes()
+        # self.check_other_saver_nodes()
+
         # create the main write node
         self.create_main_saver_node(version)
+
+        # add stalker shot instance notes as fusion sticky note
+        # TODO: fix create_shot_notes_sticky_note()
+        # self.create_shot_notes_sticky_note(version)
 
         # replace read and write node paths
         # self.replace_external_paths()
@@ -417,7 +425,7 @@ class Fusion(EnvironmentBase):
         # file paths in different OS'es should be replaced with a path that is suitable for the current one
         # update loaders
         self.fix_loader_paths()
-
+        #  TODO: fusion comps stay Locked if en error occurs somewhere here. FIX IT!
         self.comp.Unlock()
 
         rfm = RecentFileManager()
@@ -599,7 +607,34 @@ class Fusion(EnvironmentBase):
 
         return saver_nodes
 
-    def create_node_tree(self, node_tree):
+    def check_other_saver_nodes(self):
+        """Returns all saver nodes except the main saver nodes in the scene or an empty list.
+        :return: list
+        """
+        # list all the saver nodes in the current file
+        all_saver_nodes = self.comp.GetToolList(False, 'Saver').values()
+
+        saver_nodes = []
+        for saver_node in all_saver_nodes:
+            if not saver_node.GetAttrs('TOOLS_Name').startswith(self._main_output_node_name):
+                saver_nodes.append(saver_node.GetAttrs('TOOLS_Name'))
+
+        if saver_nodes:
+            answer = self.comp.AskUser('There are extra saver nodes. Continue ?', {
+                1: {
+                    1: 'Manually Added Saver Nodes:',
+                    2: 'Text',
+                    'Lines': len(saver_nodes),
+                    'Default': '\n'.join(
+                        map(lambda x: '%s' % x, saver_nodes)
+                    ),
+                }
+            })
+
+            if answer is None:
+                raise RuntimeError('Cancelled by User.')
+
+    def create_node_tree(self, node_tree, pos_x=None, pos_y=None):
         """Creates a node tree from the given node tree.
 
         The node_tree is a Python dictionary showing node types and attribute
@@ -624,6 +659,8 @@ class Fusion(EnvironmentBase):
 
         :param [dict, list] node_tree: A dictionary showing the node tree
           attributes.
+        :param pos_x: position x of the node in flow view if given
+        :param pos_y: position y of the node in flow view if given
 
         :return:
         """
@@ -639,7 +676,7 @@ class Fusion(EnvironmentBase):
         node_type = node_tree['type']
 
         self.comp.Lock()
-        node = self.comp.AddTool(node_type)
+        node = self.comp.AddTool(node_type, pos_x, pos_y)
         self.comp.Unlock()
 
         # attributes
@@ -674,7 +711,8 @@ class Fusion(EnvironmentBase):
         if 'connected_to' in node_tree:
             connected_to = node_tree['connected_to']
             if 'Input' in connected_to:
-                input_node = self.create_node_tree(connected_to['Input'])
+                pos_x -= 1  # create connected nodes to the left
+                input_node = self.create_node_tree(connected_to['Input'], pos_x, pos_y)
                 node.Input = input_node
             elif 'ref_id' in node_tree['connected_to']:
                 ref_id = node_tree['connected_to']['ref_id']
@@ -707,7 +745,11 @@ class Fusion(EnvironmentBase):
         # if this is a shot related task set it to shots resolution
         version_sig_name = self.get_significant_name(version, include_project_code=False)
 
-        file_name_buffer.append('%(version_sig_name)s.001.%(format)s')
+        video_formats = ['mov', 'mp4']
+        if file_format in video_formats:
+            file_name_buffer.append('%(version_sig_name)s.%(format)s')
+        else:
+            file_name_buffer.append('%(version_sig_name)s.001.%(format)s')
         template_kwargs.update({
             'version_sig_name': version_sig_name,
             'format': file_format
@@ -868,6 +910,41 @@ class Fusion(EnvironmentBase):
 
         return slate_node
 
+    def create_shot_notes_sticky_note(self, version):
+        """ Creates a sticky note in flow view from stalker shot notes
+        :param version: stalker Version instance
+        """
+        note_node_name = '__Shot_Notes__'
+        note = None
+        notes = ''
+
+        # check if this is a shot related task
+        is_shot_related_task = False
+        shot = None
+        from stalker import Shot
+        for task in version.task.parents:
+            if isinstance(task, Shot):
+                is_shot_related_task = True
+                shot = task
+                break
+
+        if is_shot_related_task is True:
+            try:
+                for note in shot.notes:
+                    notes += '%s\n\n' % note
+            except (IndexError, AttributeError):
+                pass
+
+        all_notes = self.comp.GetToolList(False, 'Note').values()
+        for note in all_notes:
+            if note.GetAttrs('Tools_Name') == note_node_name:
+                note.SetInput('Comments', notes, 1001)
+                break
+        if not note and notes != '':
+            note = self.comp.AddTool('Note', 97, 51)
+            note.SetAttrs({'TOOLS_Name': note_node_name})
+            note.SetInput('Comments', notes, 1001)
+
     def create_main_saver_node(self, version):
         """Creates the default saver node if there is no created before.
 
@@ -880,42 +957,89 @@ class Fusion(EnvironmentBase):
             fps = project.fps
 
         import uuid
-        random_ref_id = uuid.uuid4().hex
+        ocio_out_id = uuid.uuid4().hex
+        ocio_in_id = uuid.uuid4().hex
 
         output_format_data = [
             {
-                'name': 'jpg',
+                'name': 'OCIOColorspace_RENDER',
+                'ref_id': ocio_in_id,
+                'position_x': 96.0,
+                'position_y': 49.0,
+                'node_tree': {
+                    'type': 'OCIOColorSpace',
+                    'attr': {
+                        'TOOLS_Name': 'OCIOColorspace_RENDER',
+                    },
+                    'input_list': {
+                        'OCIOConfig': 'LUTs:/OpenColorIO-Configs/aces_1.2/config.ocio',
+                        'SourceSpace': 'ACES - ACEScg',
+                        'OutputSpace': 'ACES - ACES2065-1',
+                    },
+                },
+            },
+            {
+                'name': 'mov',
+                'position_x': 100.0,
+                'position_y': 50.0,
                 'node_tree': {
                     'type': 'Saver',
                     'attr': {
-                        'TOOLS_Name': self.output_node_name_generator('jpg'),
+                        'TOOLS_Name': self.output_node_name_generator('mov'),
                     },
                     'input_list': {
-                        'Clip': self.output_path_generator(version, 'jpg'),
+                        'Clip': self.output_path_generator(version, 'mov'),
                         'CreateDir': 1,
                         'ProcessRed': 1,
                         'ProcessGreen': 1,
                         'ProcessBlue': 1,
                         'ProcessAlpha': 0,
-                        'OutputFormat': 'JPEGFormat',
-                        'JpegFormat.Quality': 85,
+                        'OutputFormat': 'QuickTimeMovies',
+                        'ProcessMode': 'Auto',
+                        'SaveFrames': 'Full',
+                        'QuickTimeMovies.Compression': 'Apple ProRes 422 HQ_apch',
+                        'QuickTimeMovies.Quality': 95.0,
+                        'QuickTimeMovies.FrameRateFps': fps,
+                        'QuickTimeMovies.KeyFrames': 5,
+
+                        'QuickTimeMovies.LimitDataRate': 0.0,
+                        'QuickTimeMovies.DataRateK': 1000.0,
+                        'QuickTimeMovies.Advanced': 1.0,
+                        'QuickTimeMovies.Primaries': 0.0,
+                        'QuickTimeMovies.Transfer': 0.0,
+                        'QuickTimeMovies.Matrix': 0.0,
+                        'QuickTimeMovies.PixelAspectRatio': 0.0,
+                        'QuickTimeMovies.ErrorDiffusion': 1.0,
+                        'QuickTimeMovies.SaveAlphaChannel': 1.0,
+
+                        'StartRenderScript': 'frames_at_once = comp:GetPrefs("Comp.Memory.FramesAtOnce")\ncomp:SetPrefs("Comp.Memory.FramesAtOnce", 1)',
+                        'EndRenderScript': 'comp:SetPrefs("Comp.Memory.FramesAtOnce", frames_at_once)',
+
                     },
+                    # TODO: Scale mov can be optional
                     'connected_to': {
                         'Input': {
-                            "type": "OCIOColorSpace",
-                            "ref_id": random_ref_id,
-                            "input_list": {
-                                "OCIOConfig": "LUTs:/OpenColorIO-Configs/aces_1.2/config.ocio",
-                                "SourceSpace": "ACES - ACES2065-1",
-                                "OutputSpace": "Output - Rec.709",
+                            'type': 'Scale',
+                            'attr': {
+                                'TOOLS_Name': 'Scale_mov',
+                            },
+                            'input_list': {
+                                'LockXY': 1,
+                                'XSize': 0.5,
+                                'FilterMethod': 9,
+                                'WindowMethod': 0,
                             },
                             'connected_to': {
                                 'Input': {
-                                    "type": "OCIOColorSpace",
-                                    "input_list": {
-                                        "OCIOConfig": "LUTs:/OpenColorIO-Configs/aces_1.2/config.ocio",
-                                        "SourceSpace": "Utility - Linear - sRGB",
-                                        "OutputSpace": "ACES - ACES2065-1",
+                                    'type': 'OCIOColorSpace',
+                                    'attr': {
+                                        'TOOLS_Name': 'OCIOColorSpace_OUT',
+                                    },
+                                    'ref_id': ocio_out_id,
+                                    'input_list': {
+                                        'OCIOConfig': 'LUTs:/OpenColorIO-Configs/aces_1.2/config.ocio',
+                                        'SourceSpace': 'ACES - ACES2065-1',
+                                        'OutputSpace': 'Output - Rec.709',
                                     },
                                 }
                             }
@@ -924,28 +1048,9 @@ class Fusion(EnvironmentBase):
                 },
             },
             {
-                'name': 'tga',
-                'node_tree': {
-                    'type': 'Saver',
-                    'attr': {
-                        'TOOLS_Name': self.output_node_name_generator('tga'),
-                    },
-                    'input_list': {
-                        'Clip': self.output_path_generator(version, 'tga'),
-                        'CreateDir': 1,
-                        'ProcessRed': 1,
-                        'ProcessGreen': 1,
-                        'ProcessBlue': 1,
-                        'ProcessAlpha': 0,
-                        'OutputFormat': 'TGAFormat',
-                    },
-                    'connected_to': {
-                        'ref_id': random_ref_id
-                    }
-                },
-            },
-            {
                 'name': 'exr',
+                'position_x': 97.0,
+                'position_y': 50.0,
                 'node_tree': {
                     'type': 'Saver',
                     'attr': {
@@ -983,17 +1088,66 @@ class Fusion(EnvironmentBase):
                         'OpenEXRFormat.XDispEnable': 0,
                         'OpenEXRFormat.YDispEnable': 0,
                     },
+                }
+            },
+            {
+                'name': 'jpg',
+                'position_x': 100.0,
+                'position_y': 53.0,
+                'node_tree': {
+                    'type': 'Saver',
+                    'attr': {
+                        'TOOLS_Name': self.output_node_name_generator('jpg'),
+                        'TOOLB_PassThrough': True,
+                    },
+                    'input_list': {
+                        'Clip': self.output_path_generator(version, 'jpg'),
+                        'CreateDir': 1,
+                        'ProcessRed': 1,
+                        'ProcessGreen': 1,
+                        'ProcessBlue': 1,
+                        'ProcessAlpha': 0,
+                        'OutputFormat': 'JPEGFormat',
+                        'JpegFormat.Quality': 85,
+                    },
                     'connected_to': {
-                        'ref_id': random_ref_id
+                        'ref_id': ocio_out_id
                     }
                 }
             },
             {
+                'name': 'tga',
+                'position_x': 100.0,
+                'position_y': 51.0,
+                'node_tree': {
+                    'type': 'Saver',
+                    'attr': {
+                        'TOOLS_Name': self.output_node_name_generator('tga'),
+                        'TOOLB_PassThrough': True,
+                    },
+                    'input_list': {
+                        'Clip': self.output_path_generator(version, 'tga'),
+                        'CreateDir': 1,
+                        'ProcessRed': 1,
+                        'ProcessGreen': 1,
+                        'ProcessBlue': 1,
+                        'ProcessAlpha': 0,
+                        'OutputFormat': 'TGAFormat',
+                    },
+                    'connected_to': {
+                        'ref_id': ocio_out_id
+                    }
+                },
+            },
+            {
                 'name': 'mp4',
+                'position_x': 100.0,
+                'position_y': 52.0,
                 'node_tree': {
                     'type': 'Saver',
                     'attr': {
                         'TOOLS_Name': self.output_node_name_generator('mp4'),
+                        'TOOLB_PassThrough': True,
                     },
                     'input_list': {
                         'Clip': self.output_path_generator(version, 'mp4'),
@@ -1013,48 +1167,7 @@ class Fusion(EnvironmentBase):
                         'EndRenderScript': 'comp:SetPrefs("Comp.Memory.FramesAtOnce", frames_at_once)',
                     },
                     'connected_to': {
-                        'ref_id': random_ref_id
-                    }
-                }
-            },
-            {
-                'name': 'mov',
-                'node_tree': {
-                    'type': 'Saver',
-                    'attr': {
-                        'TOOLS_Name': self.output_node_name_generator('mov'),
-                    },
-                    'input_list': {
-                        'Clip': self.output_path_generator(version, 'mov'),
-                        'CreateDir': 1,
-                        'ProcessRed': 1,
-                        'ProcessGreen': 1,
-                        'ProcessBlue': 1,
-                        'ProcessAlpha': 0,
-                        'OutputFormat': 'QuickTimeMovies',
-                        'ProcessMode': 'Auto',
-                        'SaveFrames': 'Full',
-                        'QuickTimeMovies.Compression': 'Apple ProRes 422 HQ_apch',
-                        'QuickTimeMovies.Quality': 95.0,
-                        'QuickTimeMovies.FrameRateFps': fps,
-                        'QuickTimeMovies.KeyFrames': 5,
-
-                        'QuickTimeMovies.LimitDataRate': 0.0,
-                        'QuickTimeMovies.DataRateK': 1000.0,
-                        'QuickTimeMovies.Advanced': 1.0,
-                        'QuickTimeMovies.Primaries': 0.0,
-                        'QuickTimeMovies.Transfer': 0.0,
-                        'QuickTimeMovies.Matrix': 0.0,
-                        'QuickTimeMovies.PixelAspectRatio': 0.0,
-                        'QuickTimeMovies.ErrorDiffusion': 1.0,
-                        'QuickTimeMovies.SaveAlphaChannel': 1.0,
-
-                        'StartRenderScript': 'frames_at_once = comp:GetPrefs("Comp.Memory.FramesAtOnce")\ncomp:SetPrefs("Comp.Memory.FramesAtOnce", 1)',
-                        'EndRenderScript': 'comp:SetPrefs("Comp.Memory.FramesAtOnce", frames_at_once)',
-
-                    },
-                    'connected_to': {
-                        'ref_id': random_ref_id
+                        'ref_id': ocio_out_id
                     }
                 }
             },
@@ -1091,7 +1204,7 @@ class Fusion(EnvironmentBase):
                                 'connected_to': {
                                     'Input': {
                                         "type": "OCIOColorSpace",
-                                        "ref_id": random_ref_id,
+                                        "ref_id": ocio_out_id,
                                         "input_list": {
                                             "OCIOConfig": "LUTs:/OpenColorIO-Configs/aces_1.2/config.ocio",
                                             "SourceSpace": "ACES - ACES2065-1",
@@ -1151,7 +1264,7 @@ class Fusion(EnvironmentBase):
                                     "OutputSpace": "ACES - ACES2065-1",
                                 },
                                 'connected_to': {
-                                    "ref_id": random_ref_id,
+                                    "ref_id": ocio_out_id,
                                 }
                             }
                         }
@@ -1201,7 +1314,7 @@ class Fusion(EnvironmentBase):
                                     "OutputSpace": "Output - Rec.709",
                                 },
                                 'connected_to': {
-                                    "ref_id": random_ref_id,
+                                    "ref_id": ocio_out_id,
                                 }
                             }
                         }
@@ -1251,7 +1364,7 @@ class Fusion(EnvironmentBase):
                             'OpenEXRFormat.YDispEnable': 0,
                         },
                         'connected_to': {
-                            'ref_id': random_ref_id
+                            'ref_id': ocio_out_id
                         }
                     }
                 },
@@ -1264,23 +1377,31 @@ class Fusion(EnvironmentBase):
 
         # selectively generate output format
         saver_nodes = self.get_main_saver_node()
+        saver_nodes += self.comp.GetToolList(False, 'OCIOColorSpace').values()
 
         for data in output_format_data:
             format_name = data['name']
             node_tree = data['node_tree']
+            pos_x = None
+            pos_y = None
+            try:
+                pos_x = data['position_x']
+                pos_y = data['position_y']
+            except KeyError:
+                pass
 
             # now check if a node with the same name exists
             format_node = None
             format_node_name = self.output_node_name_generator(format_name)
             for node in saver_nodes:
                 node_name = node.GetAttrs('TOOLS_Name')
-                if node_name.startswith(format_node_name):
+                if node_name.startswith(format_node_name) or node_name == format_name:
                     format_node = node
                     break
 
             # create the saver node for this format if missing
             if not format_node:
-                self.create_node_tree(node_tree)
+                self.create_node_tree(node_tree, pos_x, pos_y)
             else:
                 # just update the input_lists
                 if 'input_list' in node_tree:
