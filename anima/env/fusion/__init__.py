@@ -635,7 +635,7 @@ class Fusion(EnvironmentBase):
         for saver_node in other_saver_nodes:
             other_saver_node_names.append(saver_node.GetAttrs('TOOLS_Name'))
         # prompt user
-        if saver_nodes:
+        if other_saver_node_names:
             answer = self.comp.AskUser('There are custom Saver Nodes in Flow. Continue ?', {
                 1: {
                     1: 'Saver Nodes Are:',
