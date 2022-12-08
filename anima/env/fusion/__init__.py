@@ -640,7 +640,7 @@ class Fusion(EnvironmentBase):
                 1: {
                     1: 'Saver Nodes Are:',
                     2: 'Text',
-                    'Lines': len(other_saver_nodes),
+                    'Lines': len(other_saver_node_names),
                     'Default': '\n'.join(
                         map(lambda x: '%s' % x, other_saver_node_names)
                     ),
