@@ -21,6 +21,7 @@ class Nuke(EnvironmentBase):
         self._root = self.get_root_node()
 
         self._main_output_node_name = "MAIN_OUTPUT"
+        self._output_formats = ['exr', 'mov']
 
     @classmethod
     def get_root_node(cls):
@@ -53,7 +54,7 @@ class Nuke(EnvironmentBase):
         self.update_color_management()
 
         # create the main write node
-        self.create_main_write_node(version)
+        self.create_main_write_nodes(version)
 
         # replace read and write node paths
         self.replace_external_paths()
@@ -255,33 +256,54 @@ class Nuke(EnvironmentBase):
         root = self.get_root_node()
         root["format"].setValue("%s" % image_format.name)
 
+    def output_node_name_generator(self, file_format):
+        return '%s_%s' % (self._main_output_node_name, file_format.upper())
+
     def get_main_write_nodes(self):
-        """Returns the main write node in the scene or None.
+        """Returns the main write nodes in the scene or None.
         """
-        # list all the write nodes in the current file
         all_main_write_nodes = []
+        main_saver_node_names = []
+        for format in self._output_formats:
+            main_saver_node_names.append(self.output_node_name_generator(format))
+
         for write_node in nuke.allNodes("Write"):
-            if write_node.name().startswith(self._main_output_node_name):
+            if write_node.name() == self._main_output_node_name:  # rename old write node
+                ext = write_node.knob('file_type').value().strip()
+                for format in self._output_formats:
+                    if ext == format:
+                        write_node.setName(self.output_node_name_generator(format))
+                        break
+            if write_node.name() in main_saver_node_names:
                 all_main_write_nodes.append(write_node)
 
         return all_main_write_nodes
 
-    def create_main_write_node(self, version):
-        """creates the default write node if there is no one created before.
+    def create_main_write_nodes(self, version):
+        """creates the default write nodes if there is no one created before.
         """
-        # list all the write nodes in the current file
+        # list all missing main write nodes in the current file
+        main_write_node_names = []
+        for format in self._output_formats:
+            main_write_node_names.append(self.output_node_name_generator(format))
+
         main_write_nodes = self.get_main_write_nodes()
 
-        # check if there is a write node or not
-        if not len(main_write_nodes):
-            # create one with correct output path
+        existing_write_node_names = []
+        for write_node in main_write_nodes:
+            existing_write_node_names.append(write_node.name())
+
+        # create missing main write nodes
+        write_node_names_to_be_created = [x for x in main_write_node_names if x not in existing_write_node_names]
+        for write_node_name in write_node_names_to_be_created:
             main_write_node = nuke.nodes.Write()
-            main_write_node.setName(self._main_output_node_name)
+            main_write_node.setName(write_node_name)
             main_write_nodes.append(main_write_node)
 
         for main_write_node in main_write_nodes:
             # get the output format
-            output_format_enum = main_write_node.knob('file_type').value().strip()
+            # output_format_enum = main_write_node.knob('file_type').value().strip()
+            output_format_enum = main_write_node.name().split('_')[-1].lower()  # must be a better way of doing this
             if output_format_enum == '' or output_format_enum == 'exr':
                 # set it to exr by default
                 output_format_enum = 'exr'
@@ -294,12 +316,27 @@ class Nuke(EnvironmentBase):
                     main_write_node["colorspace"].setValue(6)  # ACES 2065-1
                 main_write_node["datatype"].setValue(0)     # 16 bit half
                 main_write_node["compression"].setValue(1)  # Zip (1 scanline)
-            elif output_format_enum == 'ffmpeg':
-                output_format_enum = 'mov'
-                main_write_node["colorspace"].setValue(104)  # Output - Rec.709
-            elif output_format_enum == 'targa':
-                output_format_enum = 'tga'
-                main_write_node["colorspace"].setValue(104)  # Output - Rec.709
+            elif output_format_enum == 'mov':
+                main_write_node.knob('file_type').setValue(output_format_enum)
+                main_write_node["colorspace"].setValue('Output - Rec.709')
+                # create and connect a transform for half res
+                # TODO: half res transform node for mov format might be optional
+                transform_node_name = 'Scale_mov'
+                all_reformat_nodes = nuke.allNodes('Reformat')
+                transform_node_exists = False
+                for transform_node in all_reformat_nodes:
+                    if transform_node.name() == transform_node_name \
+                            and transform_node in main_write_node.dependencies():
+                        transform_node_exists = True
+                        break
+                if transform_node_exists is False:
+                    transform_node = nuke.Nodes().Reformat()
+                    transform_node.setName(transform_node_name)
+                    transform_node.setXYpos(main_write_node.xpos(), main_write_node.ypos() - 50)
+                    transform_node['type'].setValue('scale')
+                    transform_node['scale'].setValue(0.5)
+                    transform_node['filter'].setValue('sinc4')
+                    main_write_node.setInput(0, transform_node)
 
             # set the output path
             output_file_name = self.get_significant_name(version, include_project_code=False)
