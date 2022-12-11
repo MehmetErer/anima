@@ -13,7 +13,7 @@ def update_outputs():
     nEnv = nukeEnv.Nuke()
     version = nEnv.get_current_version()
     if version:
-        nEnv.create_main_write_node(version)
+        nEnv.create_main_write_nodes(version)
 
 
 def output_to_h264(write_node=None):
@@ -149,10 +149,11 @@ def open_node_in_file_browser(node):
     import os
     import nuke
     file_full_path = nuke.filename(node)
-    # get the path
-    file_name = os.path.basename(file_full_path)
-    path = file_full_path[:-len(file_name)]
-    open_in_file_browser(path)
+    if file_full_path:
+        # get the path
+        file_name = os.path.basename(file_full_path)
+        path = file_full_path[:-len(file_name)]
+        open_in_file_browser(path)
 
 
 def open_selected_nodes_in_file_browser():
