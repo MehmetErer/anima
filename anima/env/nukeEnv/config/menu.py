@@ -7,7 +7,7 @@ import nuke
 
 toolbar = nuke.menu("Nodes")
 
-m = toolbar.addMenu("Anima")
+m = toolbar.addMenu("Anima", icon='STALKER.png')
 
 # Pipeline tools
 m.addCommand(
@@ -22,7 +22,10 @@ m.addCommand(
     'Pipeline/Create/Update Output Nodes',
     'from anima.env.nukeEnv import auxiliary; auxiliary.update_outputs()'
 )
-
+m.addCommand(
+    'Pipeline/Browse/Open Nodes in File Browser',
+    'from anima.env.nukeEnv import auxiliary; auxiliary.open_selected_nodes_in_file_browser()'
+)
 
 # Comp tools
 # m.addCommand("Comp Tools/create slate", "nuke.createNode('slate')")
