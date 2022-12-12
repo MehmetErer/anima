@@ -135,6 +135,7 @@ class VersionsTableWidget(QtWidgets.QTableWidget):
             foreground = item.foreground()
             foreground.setColor(QtGui.QColor(0, 192, 0))
             item.setForeground(foreground)
+            item.setTextColor(QtGui.QColor(0, 192, 0))
 
         # update the previous versions list
         from anima import defaults
