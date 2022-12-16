@@ -113,6 +113,13 @@ class ToolboxLayout(QtWidgets.QVBoxLayout):
             GenericTools.update_savers
         )
 
+        # Manage Savers
+        create_button(
+            'Manage Savers',
+            general_tab_vertical_layout,
+            GenericTools.manage_savers
+        )
+
         # Loader Report
         create_button(
             'Loader Report',
@@ -146,6 +153,13 @@ class ToolboxLayout(QtWidgets.QVBoxLayout):
             'Delete Recent Comps',
             general_tab_vertical_layout,
             GenericTools.delete_recent_comps
+        )
+
+        # Unlock Comp
+        create_button(
+            'Unlock Current Comp',
+            general_tab_vertical_layout,
+            GenericTools.unlock_comp
         )
 
         # Set Frames At Once To 1, 5 and 10
@@ -263,6 +277,14 @@ class GenericTools(object):
         fusion_env.create_main_saver_node(version=v)
 
     @classmethod
+    def manage_savers(cls):
+        """manages saver nodes in a separate tableWidget UI
+        """
+        from anima.env import fusion
+        ui_instance = fusion.ManageSaversDialog()
+        ui_instance.exec_()
+
+    @classmethod
     def loader_report(cls):
         """returns the loaders in this comp
         """
@@ -317,7 +339,10 @@ class GenericTools(object):
         connected_inputs = output.GetConnectedInputs()
 
         # create pipe router
+        flow = comp.CurrentFrame.FlowView
+        x, y = flow.GetPosTable(node).values()
         pipe_router = comp.PipeRouter({"Input": node})
+        flow.SetPos(pipe_router, x+1, y)
 
         # connect it to the other nodes
         for connected_input in connected_inputs.values():
@@ -394,6 +419,15 @@ class GenericTools(object):
         print("Erasing RecentComps value!")
         fusion.SetPrefs('Global.RecentComps', {})
         fusion.SavePrefs()
+
+    @classmethod
+    def unlock_comp(cls):
+        """Unlocks comp
+        """
+        import BlackmagicFusion as bmf
+        fusion = bmf.scriptapp("Fusion")
+        comp = fusion.GetCurrentComp()
+        comp.Unlock()
 
     @classmethod
     def set_frames_at_once(cls, count=1):
