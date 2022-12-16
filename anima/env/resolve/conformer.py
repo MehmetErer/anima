@@ -621,8 +621,8 @@ class ConformerUI(object):
             self.slated_check_box.setEnabled(0)
             self.use_current_timeline.setChecked(0)
             self.use_current_timeline.setEnabled(0)
-            self.ext_name_combo_box.setCurrentIndex(0)
-            self.ext_name_combo_box.setEnabled(0)
+            # self.ext_name_combo_box.setCurrentIndex(0)
+            # self.ext_name_combo_box.setEnabled(0)
         else:
             self.slated_check_box.setEnabled(1)
             self.use_current_timeline.setEnabled(1)
@@ -1438,14 +1438,18 @@ class ConformerUI(object):
                         clip_path = clip_info[0]
                         start_index = clip_info[1]
                         end_index = clip_info[2]
-                        media_pool_item = media_pool.ImportMedia([
-                            {
-                                "FilePath": clip_path,
-                                "StartIndex": start_index,
-                                "EndIndex": end_index
-                            }
-                        ])[0]
-                        media_pool.AppendToTimeline([media_pool_item])
+                        if extension in ['mov', 'mp4']:
+                            media_pool_item = media_pool.ImportMedia([clip_path])[0]
+                            media_pool.AppendToTimeline(media_pool_item)
+                        else:
+                            media_pool_item = media_pool.ImportMedia([
+                                {
+                                    "FilePath": clip_path,
+                                    "StartIndex": start_index,
+                                    "EndIndex": end_index
+                                }
+                            ])[0]
+                            media_pool.AppendToTimeline([media_pool_item])
 
             else:
                 print('No Outputs found with given specs!')
