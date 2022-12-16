@@ -25,6 +25,316 @@ from anima import logger
 from anima.env import empty_reference_resolution
 from anima.env.base import EnvironmentBase
 from anima.recent import RecentFileManager
+from anima.ui.lib import QtGui, QtCore, QtWidgets
+from anima.ui.base import AnimaDialogBase
+
+
+class ManageSaversDialog(QtWidgets.QDialog, AnimaDialogBase):
+    """Savers dialog for managing saver nodes in Fusion.
+    This UI is specifically designed for Fusion Saver Nodes.
+    It is not a generic dialog so it is not included in anima.ui as a dialog.py
+    """
+
+    def __init__(self, parent=None):
+        super(ManageSaversDialog, self).__init__(parent)
+
+        self.comp = Fusion().comp
+
+        self.setWindowTitle('Manage Savers - %s ->' % self.comp.GetAttrs('COMPS_Name'))
+
+        self.saver_columns = [
+            'Node_Name',
+            'Saver_Type',
+            'On / Off',
+            'Output_Path'
+        ]
+
+        self._setup_ui()
+
+        self._setup_signals()
+
+        self._set_defaults()
+
+    def _setup_ui(self):
+        """sets the UI up
+        """
+        self.resize(800, 400)
+
+        self.main_layout = QtWidgets.QVBoxLayout(self)
+
+        self.main_widget = QtWidgets.QWidget(self)
+        size_policy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred,
+            QtWidgets.QSizePolicy.Preferred
+        )
+        size_policy.setHorizontalStretch(1)
+        size_policy.setVerticalStretch(1)
+        size_policy.setHeightForWidth(
+            self.main_widget.sizePolicy().hasHeightForWidth()
+        )
+        self.main_widget.setSizePolicy(size_policy)
+
+        self.main_layout.addWidget(self.main_widget)
+
+        self.main_vertical_layout = QtWidgets.QVBoxLayout(self.main_widget)
+        self.main_vertical_layout.setSizeConstraint(QtWidgets.QLayout.SetMaximumSize)
+        self.main_vertical_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.label_horizontalLayout = QtWidgets.QHBoxLayout()
+        self.label_horizontalLayout.setSizeConstraint(QtWidgets.QLayout.SetMaximumSize)
+        self.label_horizontalLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.warning_label = QtWidgets.QLabel(self.main_widget)
+        size_policy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Fixed,
+            QtWidgets.QSizePolicy.Fixed
+        )
+        self.warning_label.setSizePolicy(size_policy)
+        self.warning_label.setText("There are <b>Custom Saver Nodes</b> in this comp. <b>Continue?</b>"
+                                   " ... You can also modify Saver Nodes here from below.<br/>"
+                                   "Double-Click on [ON/OFF] column to enable or disable Savers."
+                                   "Double-Click on any other column to select Saver Node in Flow View.")
+        self.warning_label.setTextFormat(QtCore.Qt.AutoText)
+        self.label_horizontalLayout.addWidget(self.warning_label)
+
+        spacer_item = QtWidgets.QSpacerItem(
+            0, 0,
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Minimum
+        )
+        self.label_horizontalLayout.addItem(spacer_item)
+
+        self.main_vertical_layout.addLayout(self.label_horizontalLayout)
+
+        self.buttons_horizontalLayout = QtWidgets.QHBoxLayout()
+        self.buttons_horizontalLayout.setSizeConstraint(QtWidgets.QLayout.SetMaximumSize)
+        self.buttons_horizontalLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.deselect_push_button = QtWidgets.QPushButton(self.main_widget)
+        self.deselect_push_button.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.deselect_push_button.setText('Clear Selection')
+        self.buttons_horizontalLayout.addWidget(self.deselect_push_button)
+
+        self.reload_push_button = QtWidgets.QPushButton(self.main_widget)
+        self.reload_push_button.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.reload_push_button.setText('Reload')
+        self.buttons_horizontalLayout.addWidget(self.reload_push_button)
+
+        self.main_vertical_layout.addLayout(self.buttons_horizontalLayout)
+
+        self.main_tableWidget = QtWidgets.QTableWidget(self.main_widget)
+        size_policy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Minimum
+        )
+        self.main_tableWidget.setSizePolicy(size_policy)
+        self.main_tableWidget.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.main_tableWidget.setAlternatingRowColors(True)
+        self.main_tableWidget.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
+        self.main_tableWidget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
+        self.main_tableWidget.setColumnCount(len(self.saver_columns))
+        self.main_tableWidget.setRowCount(0)
+        self.main_tableWidget.horizontalHeader().setCascadingSectionResizes(True)
+        self.main_tableWidget.horizontalHeader().setStretchLastSection(True)
+
+        self.main_vertical_layout.addWidget(self.main_tableWidget)
+
+        self.standard_buttons_horizontalLayout = QtWidgets.QHBoxLayout()
+        self.standard_buttons_horizontalLayout.setSizeConstraint(QtWidgets.QLayout.SetMaximumSize)
+        self.standard_buttons_horizontalLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.buttonBox = QtWidgets.QDialogButtonBox(self)
+        self.buttonBox.setFocusPolicy(QtCore.Qt.TabFocus)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel | QtWidgets.QDialogButtonBox.Save)
+        self.buttonBox.setCenterButtons(False)
+        self.standard_buttons_horizontalLayout.addWidget(self.buttonBox)
+        self.standard_buttons_horizontalLayout.setStretch(1, 1)
+        self.main_vertical_layout.addLayout(self.standard_buttons_horizontalLayout)
+
+        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("accepted()"), self.accept)
+        QtCore.QObject.connect(self.buttonBox, QtCore.SIGNAL("rejected()"), self.reject)
+
+        self.fill_main_table_widget(self.saver_columns)
+
+    def _setup_signals(self):
+        """create the signals
+        """
+        # reload_push_button is clicked
+        QtCore.QObject.connect(
+            self.reload_push_button,
+            QtCore.SIGNAL('clicked()'),
+            self.reload_push_button_clicked
+        )
+
+        # deselect_push_button is clicked
+        QtCore.QObject.connect(
+            self.deselect_push_button,
+            QtCore.SIGNAL('clicked()'),
+            self.deselect_push_button_clicked
+        )
+
+        # main_tableWidget
+        QtCore.QObject.connect(
+            self.main_tableWidget,
+            QtCore.SIGNAL('doubleClicked(QModelIndex)'),
+            self.main_table_widget_double_clicked
+        )
+
+    def _set_defaults(self):
+        """sets the default values
+        """
+        self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowModality(QtCore.Qt.ApplicationModal)
+        self.setModal(True)
+
+    def reload_push_button_clicked(self):
+        """ runs when the refresh_push_button is clicked
+        """
+        self.fill_main_table_widget(self.saver_columns)
+
+    def deselect_push_button_clicked(self):
+        """ runs when the deselect_push_button is clicked
+        """
+        self.main_tableWidget.clearSelection()
+
+    def main_table_widget_double_clicked(self):
+        """ runs when the main_tableWidget is double-clicked
+        """
+        column_ind = self.main_tableWidget.currentColumn()
+
+        if column_ind == 2:  # Pass Through
+            row_ind = self.main_tableWidget.currentRow()
+            node_name_item = self.main_tableWidget.item(row_ind, 0)
+            node = self.comp.FindTool(node_name_item.text())
+            item = self.main_tableWidget.item(row_ind, column_ind)
+            if item.text() == 'On':
+                node.SetAttrs({"TOOLB_PassThrough": True})
+                item.setBackground(QtGui.QColor(255, 0, 0))
+                item.setText('Off')
+            else:
+                node.SetAttrs({"TOOLB_PassThrough": False})
+                item.setBackground(QtGui.QColor(0, 255, 0))
+                item.setText('On')
+        else:
+            row_ind = self.main_tableWidget.currentRow()
+            item = self.main_tableWidget.item(row_ind, 0)
+            node = self.comp.FindTool(item.text())
+            self.comp.SetActiveTool(node)
+
+    def fill_main_table_widget(self, columns):
+        """fills ui with savers
+        :param columns: list array for column headers
+        """
+
+        # clear table
+        self.main_tableWidget.clearContents()
+        self.main_tableWidget.setRowCount(0)
+        self.main_tableWidget.setColumnCount(0)
+
+        # empty rows and columns stack
+        rows = []
+        if not columns:
+            columns = []
+
+        # list all saver nodes
+        all_saver_nodes = self.comp.GetToolList(False, 'Saver').values()
+
+        # get custom saver nodes
+        saver_nodes = Fusion().get_main_saver_node()
+        saver_node_names = []
+        for saver_node in saver_nodes:
+            saver_node_names.append(saver_node.GetAttrs('TOOLS_Name'))
+
+        other_saver_nodes = []
+        for saver_node in all_saver_nodes:
+            if saver_node.GetAttrs('TOOLS_Name') not in saver_node_names:
+                other_saver_nodes.append(saver_node)
+
+        # colorize custom saver nodes
+        violet = {'B': 0.803921568627451, 'R': 0.5843137254901961, 'G': 0.29411764705882354}
+        for saver_node in other_saver_nodes:
+            saver_node.TileColor = violet
+
+        # assign data to table widget
+        if all_saver_nodes:
+            for node in all_saver_nodes:
+                saver_name = node.Name
+
+                pass_through = node.GetAttrs('TOOLB_PassThrough')
+                if pass_through is False:
+                    pass_through_txt = 'On'
+                else:
+                    pass_through_txt = 'Off'
+
+                if saver_name in saver_node_names:
+                    saver_type = 'Stalker'
+                else:
+                    saver_type = 'Custom'
+
+                path = node.GetInput('Clip')
+
+                row = [
+                    saver_name,  # Node_Name
+                    saver_type,  # Saver_Type (Stalker / Custom)
+                    pass_through_txt,  # Pass Through  (On / Off)
+                    path,  # Clip_Path (Output_Type)
+                ]
+
+                rows.append(row)
+
+        # check if columns and row data corresponds
+        if len(rows) > 0:
+            if len(rows[0]) != len(columns):
+                self.main_tableWidget.clearContents()
+                self.main_tableWidget.setRowCount(0)
+                self.main_tableWidget.setColumnCount(0)
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    'Error',
+                    'Data Mismatch. Contact Developer!.'
+                )
+                raise RuntimeError('Data Mismatch. Contact Developer!.')
+
+                # warn user if no saver is found
+        if len(rows) <= 0:
+            self.main_tableWidget.clearContents()
+            self.main_tableWidget.setRowCount(0)
+            self.main_tableWidget.setColumnCount(0)
+            QtWidgets.QMessageBox.information(
+                self,
+                'Info',
+                'No Savers Found in this scene.'
+            )
+            raise RuntimeError('No Savers Found in this scene!.')
+
+        # build the table
+        self.main_tableWidget.clearContents()
+        self.main_tableWidget.setRowCount(len(rows))
+        self.main_tableWidget.setColumnCount(len(columns))
+        self.main_tableWidget.setHorizontalHeaderLabels(columns)
+
+        row_ind = 0
+        for row in rows:
+            for column_ind in range(0, len(columns)):
+                self.main_tableWidget.setItem(row_ind, column_ind, QtWidgets.QTableWidgetItem(row[column_ind]))
+                item = self.main_tableWidget.item(row_ind, column_ind)
+
+                if column_ind == 1 and item.text() == 'Stalker':
+                    item.setBackground(QtGui.QColor(230, 180, 180))
+                elif column_ind == 1 and item.text() == 'Custom':
+                    item.setBackground(QtGui.QColor(153, 76, 204))
+
+                if column_ind == 2 and item.text() == 'On':
+                    item.setBackground(QtGui.QColor(0, 255, 0))
+                if column_ind == 2 and item.text() == 'Off':
+                    item.setBackground(QtGui.QColor(255, 0, 0))
+
+            row_ind += 1
+
+        # resize columns to fit contents
+        for i in range(0, len(columns)):
+            self.main_tableWidget.resizeColumnToContents(i)
 
 
 class Fusion(EnvironmentBase):
@@ -634,21 +944,13 @@ class Fusion(EnvironmentBase):
         other_saver_node_names = []
         for saver_node in other_saver_nodes:
             other_saver_node_names.append(saver_node.GetAttrs('TOOLS_Name'))
-        # prompt user
-        if other_saver_node_names:
-            answer = self.comp.AskUser('There are custom Saver Nodes in Flow. Continue ?', {
-                1: {
-                    1: 'Saver Nodes Are:',
-                    2: 'Text',
-                    'Lines': len(other_saver_node_names),
-                    'Default': '\n'.join(
-                        map(lambda x: '%s' % x, other_saver_node_names)
-                    ),
-                }
-            })
 
-            if answer is None:
-                raise RuntimeError('Cancelled by User.')
+        # prompt ManageSaversDialog
+        if other_saver_node_names:
+            ui_instance = ManageSaversDialog()
+            ui_instance.exec_()
+            if ui_instance.result() == ui_instance.Rejected:
+                raise RuntimeError('Save Cancelled by User.')
 
     def create_node_tree(self, node_tree, pos_x=None, pos_y=None):
         """Creates a node tree from the given node tree.
