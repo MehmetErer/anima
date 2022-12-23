@@ -12,7 +12,7 @@ import os
 from anima.ui.base import ui_caller
 from anima.ui.lib import QtGui, QtWidgets
 from anima.ui.utils import ColorList, set_widget_bg_color
-
+from anima.ui.base import AnimaDialogBase
 
 __here__ = os.path.abspath(__file__)
 
@@ -38,6 +38,13 @@ def UI(app_in=None, executor=None, **kwargs):
 
     """
     return ui_caller(app_in, executor, ToolboxDialog, **kwargs)
+
+
+class BrowseDialog(QtWidgets.QDialog, AnimaDialogBase):
+    """a QDialog instance for Browse UI options
+    """
+    def __init__(self, parent=None):
+        super(BrowseDialog, self).__init__(parent)
 
 
 class ToolboxDialog(QtWidgets.QDialog):
@@ -166,6 +173,54 @@ class ToolboxLayout(QtWidgets.QVBoxLayout):
         filename_template_combo_box.setEditable(True)
         filename_template_combo_box.addItems(GenericTools.default_output_templates)
         current_form_layout.setWidget(i, field_role, filename_template_combo_box)
+
+        # -------------------------------------------------------------------
+        # Browse
+        i += 1
+
+        def browse_folder_wrapper():
+            """shows a dialog for folder selection
+            """
+            import os
+
+            ui_instance = BrowseDialog()
+            folder_path = QtWidgets.QFileDialog.getExistingDirectory(
+                ui_instance, "Choose Folder",
+                os.path.expanduser("~")
+            )
+
+            if isinstance(folder_path, tuple):
+                folder_path = folder_path[0]
+
+            if add_filename_check_box.isChecked() and folder_path:
+                filename = filename_template_combo_box.currentText()
+                if filename.endswith('.'):
+                    filename = filename.strip('.')
+                folder_path = os.path.join(folder_path, filename)
+
+            if folder_path:
+                folder_path = os.path.normpath(folder_path)
+
+            location_template_line_edit.setText(folder_path)
+
+        layout = QtWidgets.QHBoxLayout()
+        current_form_layout.setLayout(i, field_role, layout)
+
+        browse_folder_button = QtWidgets.QPushButton()
+        browse_folder_button.setText("vv  Browse Location  vv")
+        browse_folder_button.clicked.connect(browse_folder_wrapper)
+        layout.addWidget(browse_folder_button)
+        set_widget_bg_color(browse_folder_button, color_list)
+
+        add_filename_check_box = QtWidgets.QCheckBox()
+        add_filename_check_box.setText("add Filename")
+        add_filename_check_box.setChecked(False)
+        add_filename_check_box.setToolTip("Add Filename to the Location Path")
+        add_filename_check_box.setFixedWidth(120)
+        layout.addWidget(add_filename_check_box)
+        set_widget_bg_color(add_filename_check_box, color_list)
+
+        color_list.next()
 
         # -------------------------------------------------------------------
         # Output Template
