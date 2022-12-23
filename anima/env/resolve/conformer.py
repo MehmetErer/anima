@@ -1244,10 +1244,18 @@ class ConformerUI(object):
                     shot, t_name, ext=extension, return_raw_values=True
                 )
 
+                status = None
                 if result:
                     clip_info = result[0]
                     start_index = result[1]
                     end_index = result[2]
+                    # add status to result for colorizing clips based on status
+                    if self.filter_statuses_check_box.isChecked():
+                        for task in shot.children:
+                            if task.name == t_name:
+                                status = task.status.name
+                                break
+                    result.append(status)
                 if t_name == 'Comp' and clip_info is None:  # look for Cleanup task
                     result = self.get_latest_output_path(
                         shot, 'Cleanup', ext=extension, return_raw_values=True
@@ -1257,9 +1265,16 @@ class ConformerUI(object):
                         clip_info = result[0]
                         start_index = result[1]
                         end_index = result[2]
+                        # add status to result for colorizing clips based on status
+                        if self.filter_statuses_check_box.isChecked():
+                            for task in shot.children:
+                                if task.name == 'Cleanup':
+                                    status = task.status.name
+                                    break
+                        result.append(status)
 
-                if clip_info and [clip_info, start_index, end_index] not in clip_path_list:
-                    clip_path_list.append([clip_info, start_index, end_index])
+                if clip_info and result not in clip_path_list:
+                    clip_path_list.append(result)
                 elif clip_info is None:
                     none_path_list.append('%s -> No Outputs/Main found.' % shot.name)
 
@@ -1280,7 +1295,7 @@ class ConformerUI(object):
                     rc_in = shot.record_in
                     if not rc_in:
                         raise RuntimeError('%s -> No record in data! Turn off Record In check box.' % shot.name)
-                    record_in_list.append([clip_info, start_index, end_index, rc_in])
+                    record_in_list.append([clip_info, start_index, end_index, status, rc_in])
 
             clip_path_list.sort()
             record_in_list.sort()
@@ -1391,6 +1406,7 @@ class ConformerUI(object):
                     clip_path = clip_info[0]
                     start_index = clip_info[1]
                     end_index = clip_info[2]
+                    status_name = clip_info[3]
                     print("clip_path  : %s" % clip_path)
                     print("start frame: %s" % start_index)
                     print("end frame  : %s" % end_index)
@@ -1421,6 +1437,16 @@ class ConformerUI(object):
                             media_pool.AppendToTimeline(media_pool_item)
                         else:
                             media_pool.AppendToTimeline([media_pool_item])
+
+                    # colorize clips based on stalker statuses in UI
+                    if status_name == 'Work In Progress':
+                        media_pool_item.SetClipColor("Yellow")
+                    elif status_name == 'Has Revision':
+                        media_pool_item.SetClipColor("Purple")
+                    elif status_name == 'Pending Review':
+                        media_pool_item.SetClipColor("Teal")
+                    elif status_name == 'Completed':
+                        media_pool_item.SetClipColor("Green")
 
                 # Fix shot clip names
                 if not self.keep_ext_in_clip_names_check_box.isChecked():
