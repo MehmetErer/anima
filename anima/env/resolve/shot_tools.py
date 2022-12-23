@@ -373,17 +373,18 @@ class ShotClip(object):
             shot = self.create_shot()
 
         # Update shot info
-        shot.cut_in = 1001
-        shot.cut_out = int(self.clip.GetEnd() - self.clip.GetStart() + 1000 + 2 * handle)
-        shot.source_out = shot.cut_out - handle
-        shot.source_in = shot.cut_in + handle
-        shot.record_in = self.clip.GetStart()
+        if take_name == DEFAULT_TAKE_NAME:  # Update shot info only in Main take, not in layers
+            shot.cut_in = 1001
+            shot.cut_out = int(self.clip.GetEnd() - self.clip.GetStart() + 1000 + 2 * handle)
+            shot.source_out = shot.cut_out - handle
+            shot.source_in = shot.cut_in + handle
+            shot.record_in = self.clip.GetStart()
 
-        # creat shot tasks
+        # create shot tasks
         # Anim
         with DBSession.no_autoflush:
             anim_task = Task.query.filter(Task.parent == shot).filter(Task.name == 'Anim').first()
-        if not anim_task:
+        if not anim_task and take_name == DEFAULT_TAKE_NAME:  # Create task only in Main take
             anim_task = Task(
                 name='Anim',
                 parent=shot,
@@ -400,7 +401,7 @@ class ShotClip(object):
         # Camera
         with DBSession.no_autoflush:
             camera_task = Task.query.filter(Task.parent == shot).filter(Task.name == 'Camera').first()
-        if not camera_task:
+        if not camera_task and take_name == DEFAULT_TAKE_NAME:  # Create task only in Main take:
             camera_task = Task(
                 name='Camera',
                 parent=shot,
@@ -417,7 +418,7 @@ class ShotClip(object):
         # Cleanup
         with DBSession.no_autoflush:
             cleanup_task = Task.query.filter(Task.parent == shot).filter(Task.name == 'Cleanup').first()
-        if not cleanup_task:
+        if not cleanup_task and take_name == DEFAULT_TAKE_NAME:  # Create task only in Main take:
             cleanup_task = Task(
                 name='Cleanup',
                 parent=shot,
@@ -434,7 +435,7 @@ class ShotClip(object):
         # Comp
         with DBSession.no_autoflush:
             comp_task = Task.query.filter(Task.parent == shot).filter(Task.name == 'Comp').first()
-        if not comp_task:
+        if not comp_task and take_name == DEFAULT_TAKE_NAME:  # Create task only in Main take:
             comp_task = Task(
                 name='Comp',
                 parent=shot,
@@ -451,7 +452,7 @@ class ShotClip(object):
         # Lighting
         with DBSession.no_autoflush:
             lighting_task = Task.query.filter(Task.parent == shot).filter(Task.name == 'Lighting').first()
-        if not lighting_task:
+        if not lighting_task and take_name == DEFAULT_TAKE_NAME:  # Create task only in Main take:
             lighting_task = Task(
                 name='Lighting',
                 parent=shot,
@@ -492,7 +493,8 @@ class ShotClip(object):
         # Create a dummy version if there is non
         from stalker import Version
         with DBSession.no_autoflush:
-            all_versions = Version.query.filter(Version.task == plate_task).filter(Version.take_name == take_name).all()
+            all_versions = Version.query.filter(Version.task == plate_task)\
+                .filter(Version.take_name == take_name).all()
 
         if not all_versions:
             v = Version(
@@ -519,44 +521,45 @@ class ShotClip(object):
         DBSession.commit()
 
         # add dependency relation
-        from stalker.exceptions import StatusError
-        with DBSession.no_autoflush:
-            try:
-                camera_task.depends = [plate_task]
-            except StatusError as e:
-                print(e)
-                DBSession.rollback()
-                pass
+        if take_name == DEFAULT_TAKE_NAME:  # do this only in Main take, not in layers
+            from stalker.exceptions import StatusError
+            with DBSession.no_autoflush:
+                try:
+                    camera_task.depends = [plate_task]
+                except StatusError as e:
+                    print(e)
+                    DBSession.rollback()
+                    pass
 
-            try:
-                anim_task.depends = [camera_task]
-            except StatusError as e:
-                print(e)
-                DBSession.rollback()
-                pass
+                try:
+                    anim_task.depends = [camera_task]
+                except StatusError as e:
+                    print(e)
+                    DBSession.rollback()
+                    pass
 
-            try:
-                lighting_task.depends = [anim_task, camera_task]
-            except StatusError as e:
-                print(e)
-                DBSession.rollback()
-                pass
+                try:
+                    lighting_task.depends = [anim_task, camera_task]
+                except StatusError as e:
+                    print(e)
+                    DBSession.rollback()
+                    pass
 
-            try:
-                cleanup_task.depends = [plate_task]
-            except StatusError as e:
-                print(e)
-                DBSession.rollback()
-                pass
+                try:
+                    cleanup_task.depends = [plate_task]
+                except StatusError as e:
+                    print(e)
+                    DBSession.rollback()
+                    pass
 
-            try:
-                comp_task.depends = [lighting_task, plate_task]
-            except StatusError as e:
-                print(e)
-                DBSession.rollback()
-                pass
+                try:
+                    comp_task.depends = [lighting_task, plate_task]
+                except StatusError as e:
+                    print(e)
+                    DBSession.rollback()
+                    pass
 
-        DBSession.commit()
+            DBSession.commit()
 
         return shot
 
