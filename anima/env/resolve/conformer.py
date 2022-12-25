@@ -1314,23 +1314,25 @@ class ConformerUI(object):
                         existing_clip_paths.append(os.path.normpath(clip_path))
 
                 remove_clip_info = []
+                remove_plate_info = []
                 for clip_info in clip_path_list:
                     clip_path = os.path.normpath(clip_info[0])
                     if clip_path in existing_clip_paths:
                         remove_clip_info.append(clip_info)
-                        print("clip already exists: %s  -> REMOVED" % os.path.basename(clip_path))
+                        if self.plus_plates_check_box.isChecked():
+                            # TODO: this only works in default File Structure. It must be more generic.
+                            shot_code = '_'.join(os.path.basename(clip_path).split('_')[:4])
+                            for plate_clip_info in plate_path_list:
+                                if os.path.basename(plate_clip_info[0]).startswith(shot_code):
+                                    remove_plate_info.append(plate_clip_info)
+                                    # assume that plates only have 1 version so break the loop
+                                    break
                 for remove_clip in remove_clip_info:
                     clip_path_list.remove(remove_clip)
-
-                if self.plus_plates_check_box.isChecked():
-                    remove_plate_info = []
-                    for clip_info in plate_path_list:
-                        clip_path = os.path.normpath(clip_info[0])
-                        if clip_path in existing_clip_paths:
-                            remove_plate_info.append(clip_info)
-                            print("clip already exists: %s  -> REMOVED" % os.path.basename(clip_path))
-                    for remove_clip in remove_plate_info:
-                        plate_path_list.remove(remove_clip)
+                    print("clip already exists: %s  -> REMOVED" % os.path.basename(remove_clip[0]))
+                for remove_clip in remove_plate_info:
+                    plate_path_list.remove(remove_clip)
+                    print("clip already exists: %s  -> REMOVED" % os.path.basename(remove_clip[0]))
 
             if self.sg_location_check_box.isChecked():
                 import os
