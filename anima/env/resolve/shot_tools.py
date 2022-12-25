@@ -91,7 +91,8 @@ class ShotManager(object):
         clips = self.get_clips()
         timeline = self.get_current_timeline()
         for clip in clips:
-            shot_clip = ShotClip(project=self.stalker_project, sequence=self.stalker_sequence, clip=clip, timeline=timeline)
+            shot_clip = ShotClip(project=self.stalker_project, sequence=self.stalker_sequence,
+                                 clip=clip, timeline=timeline)
             if shot_clip.is_shot():
                 shots.append(shot_clip)
         return shots
@@ -599,7 +600,8 @@ class ShotClip(object):
         logged_in_user = self.get_logged_in_user()
         # FP_001_001_0010
         scene_code = self.shot_code.split("_")[2]
-        scene_task = Task.query.filter(Task.parent == self.stalker_sequence).filter(Task.name.endswith(scene_code)).first()
+        scene_task = Task.query.filter(Task.parent == self.stalker_sequence).\
+            filter(Task.name.endswith(scene_code)).first()
         if not scene_task:
             # create the scene task
             scene_task = Task(
@@ -779,11 +781,11 @@ class ShotClip(object):
 
         # proj.SetCurrentRenderFormatAndCodec('exr', 'RGBHalfZIP')
 
-        version = plate_task.versions[-1]
         from stalker import Version
+        version = Version.query.filter(Version.task == plate_task).\
+            filter(Version.take_name == take_name).order_by(Version.version_number.desc()).first()
         assert isinstance(version, Version)
-        version = version.latest_version
-        assert isinstance(version, Version)
+
         from anima.env.base import EnvironmentBase
         version_sig_name = EnvironmentBase.get_significant_name(version, include_project_code=False)
 
@@ -1611,8 +1613,49 @@ class ShotManagerUI(object):
     def validate_shot_codes_callback(self):
         """callback function for validate_shot_codes_button
         """
+        import re
+
         sm = ShotManager()
+        shot_clips = sm.get_shot_clips()
+
+        # prompt user if sequence code does not match with sequence selected in UI
+        non_matching_sequence_shots = []
+        for shot_clip in shot_clips:
+            shot_code = shot_clip.shot_code
+            try:
+                shot_seq_code = shot_code.split('_')[1]
+                ui_seq_code = self.sequence_combo_box.currentText()
+                if ui_seq_code != shot_seq_code:
+                    ui_seq_num = re.findall(r"\d+", ui_seq_code)[0]
+                    if ui_seq_num != shot_seq_code:
+                        non_matching_sequence_shots.append(shot_clip)
+            except (IndexError, AttributeError):
+                pass
+
+        if non_matching_sequence_shots:
+            shots_txt = "<br>".join([shot_clip.shot_code for shot_clip in non_matching_sequence_shots])
+            if len(non_matching_sequence_shots) > 50:
+                print(shots_txt)
+                shots_txt = "There are more than 50 shots that do not match with selected sequence.<br/>" \
+                            "You probably selected the wrong sequence for this timeline.<br/>" \
+                            "Check Console to see which shots are INVALID."
+
+            answer = QtWidgets.QMessageBox.question(
+                self.parent_widget,
+                "Continue ?",
+                "Selected sequence <b>%s</b> does NOT match with these shots.<br/>"
+                "<br/>%s<br/>"
+                "<br/>Continue Anyway?" % (self.sequence_combo_box.currentText(), shots_txt),
+                QtWidgets.QMessageBox.Yes,
+                QtWidgets.QMessageBox.No
+            )
+
+            if answer == QtWidgets.QMessageBox.No:
+                raise RuntimeError('Validation Cancelled by User.')
+
+        # validate shot codes
         invalid_shots = sm.validate_shot_codes()
+
         if invalid_shots:
             QtWidgets.QMessageBox.critical(
                 self.parent_widget,
@@ -1675,8 +1718,37 @@ class ShotManagerUI(object):
             shot_clips = shot_manager.get_shot_clips()
         elif clicked_button == current_shot:
             shot_clip = shot_manager.get_current_shot_clip()
+
             if shot_clip:
-                shot_clips.append(shot_clip)
+                from stalker import Task, Type, Version
+                from stalker.db.session import DBSession
+
+                # prompt user if there is already a version created under specified take
+                shot = shot_clip.get_shot()
+                plate_type = Type.query.filter(Type.name == 'Plate').first()
+                with DBSession.no_autoflush:
+                    plate_task = Task.query.filter(Task.parent == shot).filter(Task.type == plate_type).first()
+                version = Version.query.filter(Version.task == plate_task). \
+                    filter(Version.take_name == take_name).order_by(Version.version_number.desc()).first()
+
+                if version:
+                    answer = QtWidgets.QMessageBox.question(
+                        self.parent_widget,
+                        "Continue ?",
+                        "%s 's Plate Task:<br/>"
+                        "Already has version in <b>%s</b> take.<br/>"
+                        "Create Render Job Anyway?" % (shot.name, take_name),
+                        QtWidgets.QMessageBox.Yes,
+                        QtWidgets.QMessageBox.No
+                    )
+
+                    if answer == QtWidgets.QMessageBox.Yes:
+                        shot_clips.append(shot_clip)
+                    else:
+                        print("Render Job for %s's Plate [%s] take is Cancelled by User." % (shot.name, take_name))
+                else:  # means there is no version at all so add the clip
+                    shot_clips.append(shot_clip)
+
         try:
             shot_manager.create_render_jobs(shot_clips, handle, take_name, preset_name)
             if success:
