@@ -335,7 +335,7 @@ class Nuke(EnvironmentBase):
                     transform_node.setXYpos(main_write_node.xpos(), main_write_node.ypos() - 50)
                     transform_node['type'].setValue('scale')
                     transform_node['scale'].setValue(0.5)
-                    transform_node['filter'].setValue('sinc4')
+                    transform_node['filter'].setValue('Lanczos4')
                     main_write_node.setInput(0, transform_node)
 
             # set the output path
