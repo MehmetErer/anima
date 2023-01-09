@@ -238,8 +238,14 @@ def check_rs_stmap_path_is_relative(progress_controller=None):
 
     checks if StMap path shown to RedshiftLensDistortion nodes are relative.
     """
+    from stalker import Repository
+
     if progress_controller is None:
         progress_controller = ProgressControllerBase()
+
+    repo_vars = []
+    for repo in Repository.query.all():
+        repo_vars.append('$%s' % repo.env_var)
 
     relative_lens_distortion_nodes = []
 
@@ -248,9 +254,15 @@ def check_rs_stmap_path_is_relative(progress_controller=None):
 
     root_dir = pm.workspace(q=1, rd=1)
     for rs_lens_node in nodes_to_check:
+        valid_repo_path = False
         path = rs_lens_node.getAttr('LDimage')
-        if not path.startswith(root_dir):
-            relative_lens_distortion_nodes.append(rs_lens_node)
+        for repo_var in repo_vars:
+            if path.startswith(repo_var):
+                valid_repo_path = True
+                break
+        if valid_repo_path is False:
+            if not path.startswith(root_dir):
+                relative_lens_distortion_nodes.append(rs_lens_node)
         progress_controller.increment()
 
     progress_controller.complete()
