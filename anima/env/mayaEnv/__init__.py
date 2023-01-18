@@ -1490,7 +1490,7 @@ workspace -fr "translatorData" "Outputs/data";
             'RedshiftProxyMesh': 'fileName',
             'RedshiftDomeLight': ['tex0', 'tex1'],
             'RedshiftSprite': 'tex0',
-            'RedshiftLensDistortion': 'LDimage',
+            # 'RedshiftLensDistortion': 'LDimage',
         }
 
         for node_type in types_and_attrs.keys():
