@@ -88,6 +88,20 @@ class UI(object):
         self.window = None
 
     def show(self):
+        # force OCIO settings for multi platform support in Maya 2022> before showing the UI
+        if int(pm.about(v=1)) >= 2022:
+            if pm.mel.eval('colorManagementPrefs -query -configFilePath;').startswith('<MAYA_RESOURCES>') is False:
+                pm.confirmDialog(
+                    title='OCIO Settings Error !',
+                    message='Current OCIO Settings are <b>NOT allowed</b> in Farm!<br>'
+                            '<br>Fix OCIO Settings via related scripts.',
+                    button=['Ok'],
+                    defaultButton='Ok',
+                    cancelButton='Ok',
+                    dismissString='Ok'
+                )
+                return
+
         # some default values
         section_label_height = 30
         labels_width = 140
