@@ -1267,12 +1267,13 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
 
                     if os.path.isdir(os.path.dirname(output_file_path)):
                         # try to create default mov output format folder along with evaluated structure too
-                        if os.path.split(os.path.split(output_file_path)[0])[1] == evaluated_structure[-1]:
-                            mov_folder = os.path.join(os.path.split(os.path.split(output_file_path)[0])[0], 'mov')
-                            try:
-                                os.makedirs(mov_folder)
-                            except OSError:
-                                pass
+                        if evaluated_structure[-1] in ['exr', 'jpg', 'jpeg', 'png', 'tga', 'tif', 'tiff']:
+                            if os.path.split(os.path.split(output_file_path)[0])[1] == evaluated_structure[-1]:
+                                mov_folder = os.path.join(os.path.split(os.path.split(output_file_path)[0])[0], 'mov')
+                                try:
+                                    os.makedirs(mov_folder)
+                                except OSError:
+                                    pass
 
                         utils.open_browser_in_location(os.path.dirname(output_file_path))
 
