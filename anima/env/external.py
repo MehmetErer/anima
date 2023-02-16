@@ -46,7 +46,7 @@ external_environments = {
         },
         'extensions': ['.uproject'],
         'structure': [
-            'Outputs', 'version.take_name', "'v%03d' % version.version_number", 'exr'
+            'Outputs', 'renders', "masterLayer"
         ]
     },
     'Flame': {
