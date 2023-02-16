@@ -38,6 +38,17 @@ external_environments = {
             'Outputs',
         ]
     },
+    'Unreal': {
+        'name': 'Unreal',
+        'icon': 'unreal.png',
+        'executable': {
+            'linux': 'None',
+        },
+        'extensions': ['.uproject'],
+        'structure': [
+            'Outputs', 'version.take_name', "'v%03d' % version.version_number", 'exr'
+        ]
+    },
     'Flame': {
         'name': 'Flame',
         'icon': 'flame.png',
