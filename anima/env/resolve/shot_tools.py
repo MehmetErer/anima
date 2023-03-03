@@ -1939,6 +1939,25 @@ class ReviewManagerUI(object):
         set_widget_bg_color(review_current_shot_task_push_button, color_list)
         color_list.next()
 
+        open_in_web_browser_horizontal_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.addLayout(open_in_web_browser_horizontal_layout)
+
+        self.comp_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.comp_check_box.setText("Comp")
+        self.comp_check_box.setChecked(True)
+        self.comp_check_box.setToolTip("Go to Comp task directly instead of Shot.")
+        self.comp_check_box.setFixedWidth(120)
+        open_in_web_browser_horizontal_layout.addWidget(self.comp_check_box)
+
+        open_shot_clip_in_web_browser_push_button = QtWidgets.QPushButton(self.parent_widget)
+        open_shot_clip_in_web_browser_push_button.setText("Open Current Clip in Web Browser"
+                                                          "                                        ")
+        self.main_layout.addWidget(open_shot_clip_in_web_browser_push_button)
+        open_shot_clip_in_web_browser_push_button.clicked.connect(partial(self.open_shot_clip_in_web_browser_callback))
+        set_widget_bg_color(open_shot_clip_in_web_browser_push_button, color_list)
+        color_list.next()
+        open_in_web_browser_horizontal_layout.addWidget(open_shot_clip_in_web_browser_push_button)
+
         # ---------------------------------------------------------
         self.main_layout.addStretch()
 
@@ -2109,3 +2128,36 @@ class ReviewManagerUI(object):
                     "Error!",
                     "You are not a responsible or a Power User!!!"
                 )
+
+    def open_shot_clip_in_web_browser_callback(self):
+        """runs when open in web browser button is clicked
+        """
+        from anima import defaults
+        import webbrowser
+
+        project = self.project_combo_box.get_current_project()
+        sequence = self.project_combo_box.get_current_project()
+        sm = ShotManager(project, sequence)
+        shot_clip = sm.get_current_shot_clip()
+        stalker_shot = shot_clip.get_shot()
+
+        entity = stalker_shot
+        if self.comp_check_box.isChecked():
+            try:
+                for task in stalker_shot.children:
+                    if task.name == 'Comp':
+                        entity = task
+                        break
+            except BaseException:
+                pass
+
+        if entity:
+            url = 'http://%s/%ss/%s/view' % (
+                defaults.stalker_server_internal_address,
+                entity.entity_type.lower(),
+                entity.id
+            )
+
+            webbrowser.open(url)
+        else:
+            print('Current clip is not named as in Stalker defaults.')
