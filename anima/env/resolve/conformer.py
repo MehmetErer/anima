@@ -1276,7 +1276,18 @@ class ConformerUI(object):
                 if clip_info and result not in clip_path_list:
                     clip_path_list.append(result)
                 elif clip_info is None:
-                    none_path_list.append('%s -> No Outputs/Main found.' % shot.name)
+                    st = 'NULL'
+                    rs = 'NULL'
+                    if shot:
+                        for task in shot.children:
+                            if task.name == t_name:
+                                try:
+                                    st = task.status.name
+                                    rs = task.resources[0].name
+                                    break
+                                except IndexError:
+                                    pass
+                    none_path_list.append('%s -> No Outputs/Main found. - [%s] - %s' % (shot.name, st, rs))
 
                 if t_name == 'Comp' and clip_info and self.plus_plates_check_box.isChecked():
                     plate_path, p_start_frame, p_end_frame = self.get_latest_output_path(
@@ -1307,9 +1318,29 @@ class ConformerUI(object):
             existing_clip_paths = []
             if self.exclude_clips_in_sel_clips_check_box.isChecked():
                 import os
-                existing_clips = self.resolve_project.GetMediaPool().GetCurrentFolder().GetClipList()
+                current_folder = self.resolve_project.GetMediaPool().GetCurrentFolder()
+                folders = [current_folder]
+                for folder in folders:
+                    sub_folders = []
+                    for sub_folder in folder.GetSubFolderList():
+                        if sub_folder not in sub_folders:
+                            sub_folders.append(sub_folder)
+                    for sub_folder in sub_folders:
+                        if sub_folder not in folders:
+                            folders.append(sub_folder)
+                existing_clips = []
+                for folder in folders:
+                    sub_existing_clips = folder.GetClipList()
+                    for sub_existing_clip in sub_existing_clips:
+                        if sub_existing_clip not in existing_clips:
+                            existing_clips.append(sub_existing_clip)
                 for existing_clip in existing_clips:
                     clip_path = existing_clip.GetClipProperty('File Path')
+                    #TODO: This must be more generic
+                    if extension == 'exr':
+                        cp = clip_path.split('.')
+                        cp[-2] = '%04d'
+                        clip_path = '.'.join(cp)
                     if os.path.normpath(clip_path) not in existing_clip_paths:
                         existing_clip_paths.append(os.path.normpath(clip_path))
 
@@ -1378,9 +1409,12 @@ class ConformerUI(object):
                     print(clip_path_list[i][0])
             print('--------------------------------------------------------------------------')
             if none_path_list:
+                print('------------------------------------------------------OUTPUT NOT FOUND'
+                      '---------------------------------------------------------------------')
                 for none_path in none_path_list:
                     print(none_path)
-                print('--------------------------------------------------------------------------')
+                print('-----------------------------------------------------------------------'
+                      '--------------------------------------------------------------------')
             if plate_not_found_list:
                 print('--------------------------PLATES NOT FOUND--------------------------------')
                 for p_path in plate_not_found_list:
