@@ -1315,7 +1315,7 @@ class ConformerUI(object):
             plate_not_found_list.sort()
             plate_range_mismatch_list.sort()
 
-            existing_clip_paths = []
+            existing_clip_names = []
             if self.exclude_clips_in_sel_clips_check_box.isChecked():
                 import os
                 current_folder = self.resolve_project.GetMediaPool().GetCurrentFolder()
@@ -1335,20 +1335,16 @@ class ConformerUI(object):
                         if sub_existing_clip not in existing_clips:
                             existing_clips.append(sub_existing_clip)
                 for existing_clip in existing_clips:
-                    clip_path = existing_clip.GetClipProperty('File Path')
-                    #TODO: This must be more generic
-                    if extension == 'exr':
-                        cp = clip_path.split('.')
-                        cp[-2] = '%04d'
-                        clip_path = '.'.join(cp)
-                    if os.path.normpath(clip_path) not in existing_clip_paths:
-                        existing_clip_paths.append(os.path.normpath(clip_path))
+                    clip_name = existing_clip.GetName().split('.')[0]
+                    if clip_name not in existing_clip_names:
+                        existing_clip_names.append(clip_name)
 
                 remove_clip_info = []
                 remove_plate_info = []
                 for clip_info in clip_path_list:
                     clip_path = os.path.normpath(clip_info[0])
-                    if clip_path in existing_clip_paths:
+                    clip_name = os.path.basename(clip_path).split('.')[0]
+                    if clip_name in existing_clip_names:
                         remove_clip_info.append(clip_info)
                         if self.plus_plates_check_box.isChecked():
                             # TODO: this only works in default File Structure. It must be more generic.
@@ -1383,12 +1379,14 @@ class ConformerUI(object):
             if plate_path_list and self.plus_plates_check_box.isChecked():
                 if len(clip_path_list) != len(plate_path_list):
                     print('--------------------------------------------------------------------------')
-                    print('ERROR: Comp / Plate mismatch! Contact Supervisor.')
+                    print('ERROR: Comp / Plate mismatch! | %i / %i |Contact Supervisor.'
+                          % (len(clip_path_list), len(plate_path_list)))
                     print('--------------------------------------------------------------------------')
                     print(clip_path_list)
                     print('--------------------------------------------------------------------------')
                     print(plate_path_list)
-                    raise RuntimeError('Comp / Plate mismatch! Contact Supervisor.')
+                    raise RuntimeError('Comp / Plate mismatch! | %i / %i | Contact Supervisor.'
+                                       % (len(clip_path_list), len(plate_path_list)))
 
                 for i in range(0, len(clip_path_list)):
                     try:
