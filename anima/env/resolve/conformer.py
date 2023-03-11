@@ -1364,6 +1364,7 @@ class ConformerUI(object):
             if self.sg_location_check_box.isChecked():
                 import os
                 remove_sg_clip_info = []
+                remove_sg_plate_info = []
                 sg_data = self.get_sg_data(self.location_line_edit.text())
                 for clip_info in clip_path_list:
                     clip_path = os.path.normpath(clip_info[0])
@@ -1372,9 +1373,21 @@ class ConformerUI(object):
                         if sg_info[0] == clip_version_name:
                             remove_sg_clip_info.append(clip_info)
                             print("clip already submitted: %s  -> REMOVED for SHOTGRID" % clip_version_name)
+                            if self.plus_plates_check_box.isChecked():
+                                # TODO: Fix DRY. This only works in default File Structure. It must be more generic.
+                                shot_code = '_'.join(os.path.basename(clip_path).split('_')[:4])
+                                for plate_clip_info in plate_path_list:
+                                    if os.path.basename(plate_clip_info[0]).startswith(shot_code):
+                                        remove_sg_plate_info.append(plate_clip_info)
+                                        # assume that plates only have 1 version so break the loop
+                                        break
                             break
                 for remove_sg_clip in remove_sg_clip_info:
                     clip_path_list.remove(remove_sg_clip)
+                for remove_plate_clip in remove_sg_plate_info:
+                    plate_path_list.remove(remove_plate_clip)
+                    plate_base_name = os.path.basename(remove_plate_clip[0])
+                    print("plate also removed: %s  -> REMOVED for SHOTGRID" % plate_base_name)
 
             if plate_path_list and self.plus_plates_check_box.isChecked():
                 if len(clip_path_list) != len(plate_path_list):
