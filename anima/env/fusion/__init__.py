@@ -1155,11 +1155,25 @@ class Fusion(EnvironmentBase):
             from anima.utils.report import NetflixReporter
             slate_node.Input8 = ", ".join(NetflixReporter.generate_shot_methodologies(shot))
 
-            # Shot Description
+            # Shot Description / Scope of Work (Brief)
             from anima.utils import text_splitter
             split_description = text_splitter(shot.description, 40)
             slate_node.Input9 = "\n".join(split_description[0:3])
-            slate_node.Input10 = "\n".join(split_description[0:3])
+
+            # get brief from shot notes if available
+            brief = None
+            try:
+                if shot.notes[0].content.startswith('Brief:'):
+                    brief = shot.notes[0].content.strip('Brief:').strip()\
+                        .replace('\r', ' ').replace('\t', '').replace('\n', '')
+            except (IndexError, AttributeError):
+                pass
+
+            if brief:
+                split_brief = text_splitter(brief, 40)
+                slate_node.Input10 = "\n".join(split_brief[0:3])
+            else:  # same as description
+                slate_node.Input10 = "\n".join(split_description[0:3])
 
             # Submission Note
             slate_node.Input11 = submission_note
