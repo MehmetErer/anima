@@ -8,10 +8,10 @@ import os
 class NetflixReporter(object):
     """Creates Netflix compliant reports of Episodes/Sequences
     """
-    csv_header = "Episode;Shot Name;VFX Shot Status;Shot Methodologies;Scope of Work;Vendors;" \
+    csv_header = "Episode;Shot Name;VFX Shot Status;Key Shots;Shot Methodologies;Scope of Work;Vendors;" \
                  "VFX Turnover to Vendor Date;VFX Next Studio Review Date;VFX Final Delivery Date;VFX Final Version;" \
                  "Shot Cost;Currency;Report Date;Report Note"
-    csv_format = "{episode_number};{shot.code};{status};{shot_methodologies};{scope_of_work};{vendors};" \
+    csv_format = "{episode_number};{shot.code};{status};{key_shots};{shot_methodologies};{scope_of_work};{vendors};" \
                  "{vfx_turnover_to_vendor_date};{vfx_next_studio_review_date};{vfx_final_delivery_date};" \
                  "{vfx_final_version};{shot_cost};{currency};{report_date};{report_note}"
 
@@ -272,6 +272,15 @@ class NetflixReporter(object):
 
                     total_bid_seconds += shot.to_seconds(child.bid_timing, child.bid_unit, child.schedule_model)
 
+                # get brief from shot notes if available for scope of work
+                scope_of_work = shot.description
+                try:
+                    if shot.notes[0].content.startswith('Brief:'):
+                        scope_of_work = shot.notes[0].content.strip('Brief:').strip()\
+                            .replace('\r', ' ').replace('\t', '').replace('\n', '')
+                except (IndexError, AttributeError):
+                    pass
+
                 shot.update_schedule_info()
                 rendered_data = self.csv_format.format(
                     episode_number=ep.name[2:],
@@ -281,8 +290,9 @@ class NetflixReporter(object):
                     shot=shot,
                     task=comp_or_cleanup_task,
                     status=self.map_status_code(self.get_shot_status(shot).code if comp_or_cleanup_task.status.code != 'PREV' else 'PREV'),
+                    key_shots=False,
                     shot_methodologies=', '.join(self.generate_shot_methodologies(shot)),
-                    scope_of_work=shot.description,
+                    scope_of_work=scope_of_work,
                     vendors=', '.join(vendors),
                     vfx_turnover_to_vendor_date=vfx_turnover_to_vendor_date.strftime(self.date_time_format),
                     vfx_next_studio_review_date=vfx_next_studio_review_date.strftime(self.date_time_format) if comp_or_cleanup_task.status.code in ['CMPL', 'PREV'] else '',
@@ -300,7 +310,10 @@ class NetflixReporter(object):
         DBSession.commit()
 
         # make dirs
-        os.makedirs(os.path.dirname(csv_output_path), exist_ok=True)
+        try:
+            os.makedirs(os.path.dirname(csv_output_path))
+        except OSError:
+            pass
 
         with open(csv_output_path, 'w') as f:
             f.write('\n'.join(data))
@@ -362,7 +375,16 @@ class NetflixReview(object):
             version_data.append(shot.name)
 
             # Scope Of Work
-            version_data.append('"%s"' % shot.description)
+            # get brief from shot notes if available
+            scope_of_work = shot.description
+            try:
+                if shot.notes[0].content.startswith('Brief:'):
+                    scope_of_work = shot.notes[0].content.strip('Brief:').strip()\
+                        .replace('\r', ' ').replace('\t', '').replace('\n', '')
+            except (IndexError, AttributeError):
+                pass
+
+            version_data.append('"%s"' % scope_of_work)
 
             # Vendor
             version_data.append(vendor)
