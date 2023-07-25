@@ -867,7 +867,7 @@ class ShotClip(object):
                     if len(parts) >= 4 and ext not in ['r3d', 'dng']:
                         import re
                         project_code_regex = re.compile("[A-Z]+")
-                        episode_code_regex = re.compile("[0-9]+")
+                        episode_code_regex = re.compile("[0-9]+|E[0-9]+")
                         scene_code_regex = re.compile("[A-Z0-9]+")
                         shot_code_regex = re.compile("[0-9]+")
                         project_code, episode_code, scene_code, shot_code = parts[0:4]
@@ -909,8 +909,8 @@ class ShotClip(object):
         """validates the shot code
         """
         import re
-        regex = re.compile(r"([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})")
-        #  ([\w]+)_(\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})
+        regex = re.compile(r"([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4}|\d{3})")
+        #  ([\w]+)_(\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})    ([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})
         shot_code = self.shot_code
         match = regex.match(shot_code)
         if not match:
@@ -1624,10 +1624,11 @@ class ShotManagerUI(object):
             shot_code = shot_clip.shot_code
             try:
                 shot_seq_code = shot_code.split('_')[1]
+                shot_seq_num = re.findall(r"\d+", shot_seq_code)[0]
                 ui_seq_code = self.sequence_combo_box.currentText()
                 if ui_seq_code != shot_seq_code:
                     ui_seq_num = re.findall(r"\d+", ui_seq_code)[0]
-                    if ui_seq_num != shot_seq_code:
+                    if ui_seq_num != shot_seq_num:
                         non_matching_sequence_shots.append(shot_clip)
             except (IndexError, AttributeError):
                 pass
