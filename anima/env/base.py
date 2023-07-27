@@ -622,6 +622,18 @@ class EnvironmentBase(object):
         else:
             sig_name = version.nice_name
 
+        #  TODO: this is not generic. fix ASAP.
+        if version.task.project.name == 'Helgoland':
+            if version.take_name.lower() == 'zero':
+                a = version.nice_name.split('_')
+                a.pop(-2)
+                a[-1] = a[-1].lower()
+                sig_name = '_'.join(a)
+            elif version.take_name == 'Main':
+                a = version.nice_name.split('_')
+                a[-2] = a[-2].lower()
+                sig_name = '_'.join(a[:-1])
+
         if vendor_code:
             sig_name = '%s_%s' % (sig_name, vendor_code)
 
