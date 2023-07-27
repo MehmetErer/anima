@@ -316,6 +316,9 @@ class Nuke(EnvironmentBase):
                     main_write_node["colorspace"].setValue(6)  # ACES 2065-1
                 main_write_node["datatype"].setValue(0)     # 16 bit half
                 main_write_node["compression"].setValue(1)  # Zip (1 scanline)
+                # TODO: Tis is not generic. Fix ASAP.
+                if version.task.project.name == 'Helgoland':
+                    main_write_node["compression"].setValue(3)  # PIZ Wavelet
             elif output_format_enum == 'mov':
                 main_write_node.knob('file_type').setValue(output_format_enum)
                 main_write_node["colorspace"].setValue('Output - Rec.709')
