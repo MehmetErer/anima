@@ -1385,6 +1385,7 @@ class Fusion(EnvironmentBase):
                         'ProcessAlpha': 0,
                         'OutputFormat': 'OpenEXRFormat',
                         'OpenEXRFormat.Depth': 1,  # 16-bit float
+                        'OpenEXRFormat.Compression': 3,  # Zip(16 lines)
                         'OpenEXRFormat.RedEnable': 1,
                         'OpenEXRFormat.GreenEnable': 1,
                         'OpenEXRFormat.BlueEnable': 1,
@@ -1556,6 +1557,7 @@ class Fusion(EnvironmentBase):
                             'ProcessAlpha': 0,
                             'OutputFormat': 'OpenEXRFormat',
                             'OpenEXRFormat.Depth': 1,  # 16-bit float
+                            'OpenEXRFormat.Compression': 3,  # Zip(16 lines)
                             'OpenEXRFormat.RedEnable': 1,
                             'OpenEXRFormat.GreenEnable': 1,
                             'OpenEXRFormat.BlueEnable': 1,
@@ -1668,6 +1670,7 @@ class Fusion(EnvironmentBase):
                             'ProcessAlpha': 0,
                             'OutputFormat': 'OpenEXRFormat',
                             'OpenEXRFormat.Depth': 2,  # 32-bit float
+                            'OpenEXRFormat.Compression': 3,  # Zip(16 lines)
                             'OpenEXRFormat.RedEnable': 1,
                             'OpenEXRFormat.GreenEnable': 1,
                             'OpenEXRFormat.BlueEnable': 1,
@@ -1702,6 +1705,13 @@ class Fusion(EnvironmentBase):
                 "Comp.FrameFormat.DepthFull": 3.0,
                 "Comp.FrameFormat.DepthLock": True,
             })
+
+        # TODO: This is not generic. Fix ASAP.
+        if version.task.project.name == 'Helgoland':
+            try:
+                output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.Compression'] = 4
+            except (KeyError, IndexError):
+                pass
 
         # create or update OCIOColorSpace_RENDER node as separated alone in flow view if exists in data
         has_ocio_in = False
