@@ -557,6 +557,10 @@ class Fusion(EnvironmentBase):
         # self.fusion = bmd.get_fusion()
 
         self.fusion = bmf.scriptapp("Fusion")
+        if not self.fusion:
+            # for Fusion inside Resolve
+            resolve = bmf.scriptapp("Resolve")
+            self.fusion = resolve.Fusion()
         self.fusion_prefs = self.fusion.GetPrefs()['Global']
 
         # update name with version
