@@ -319,6 +319,7 @@ class Nuke(EnvironmentBase):
                 # TODO: Tis is not generic. Fix ASAP.
                 if version.task.project.name == 'Helgoland':
                     main_write_node["compression"].setValue(3)  # PIZ Wavelet
+                    main_write_node["metadata"].setValue(4)  # all metadata
             elif output_format_enum == 'mov':
                 main_write_node.knob('file_type').setValue(output_format_enum)
                 main_write_node["colorspace"].setValue('Output - Rec.709')
