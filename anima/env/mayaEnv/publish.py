@@ -65,6 +65,7 @@ VALID_MATERIALS = {
     ],
     'redshift': [
         # REDSHIFT
+        'RedshiftStandardMaterial',
         'RedshiftAmbientOcclusion',
         'RedshiftArchitectural',
         'RedshiftAttributeLookup',
