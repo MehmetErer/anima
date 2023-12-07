@@ -168,9 +168,9 @@ class ExternalEnv(EnvironmentBase):
                              structure.__class__.__name__))
 
         for item in structure:
-            if not isinstance(item, basestring):
+            if not isinstance(item, str):
                 raise TypeError('All items in %s.structure should be an '
-                                'instance of basestring, an not %s' % 
+                                'instance of str, an not %s' %
                                 (self.__class__.__name__,
                                  item.__class__.__name__))
 
