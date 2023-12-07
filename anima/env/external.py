@@ -347,12 +347,12 @@ class ExternalEnvFactory(object):
         import re
 
         # replace anything that doesn't start with '%' with [\s\(\)\-]+
-        pattern = re.sub(r'[^%\w]+', '[\s\(\)\-]+', name_format)
+        pattern = re.sub(r"[^%\w]+", r"[\\s\\(\\)\\-]+", name_format)
 
-        pattern = pattern\
-            .replace('%n', '(?P<name>[\w\s]+)')\
-            .replace('%e', '(?P<extension>\.\w+)')
-        logger.debug('pattern : %s' % pattern)
+        pattern = pattern.replace("%n", r"(?P<name>[\w\s]+)").replace(
+            "%e", r"(?P<extension>\.\w+)"
+        )
+        logger.debug("pattern : {}".format(pattern))
 
         match = re.search(pattern, name)
         env_name = None
