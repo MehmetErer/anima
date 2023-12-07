@@ -338,9 +338,9 @@ class ExternalEnvFactory(object):
 
         :return ExternalEnv: ExternalEnv instance
         """
-        if not isinstance(name, basestring):
+        if not isinstance(name, str):
             raise TypeError('"name" argument in %s.get_env() should be an '
-                            'instance of basestring, not %s' %
+                            'instance of str, not %s' %
                             (cls.__name__, name.__class__.__name__))
 
         # filter the name
