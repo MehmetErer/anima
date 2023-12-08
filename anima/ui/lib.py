@@ -18,6 +18,9 @@ elif IS_PYSIDE():
 elif IS_PYSIDE2():
     logger.debug('importing PySide2')
     from PySide2 import QtGui, QtCore, QtWidgets
+elif IS_PYSIDE6():
+    logger.debug("importing PySide6")
+    from PySide6 import QtGui, QtCore, QtWidgets
 elif IS_QTPY():
     logger.debug('importing Qt.py')
     from Qt import QtGui, QtCore, QtWidgets
