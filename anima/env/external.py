@@ -168,9 +168,9 @@ class ExternalEnv(EnvironmentBase):
                              structure.__class__.__name__))
 
         for item in structure:
-            if not isinstance(item, str):
+            if not isinstance(item, basestring):
                 raise TypeError('All items in %s.structure should be an '
-                                'instance of str, an not %s' %
+                                'instance of basestring, an not %s' %
                                 (self.__class__.__name__,
                                  item.__class__.__name__))
 
@@ -338,21 +338,21 @@ class ExternalEnvFactory(object):
 
         :return ExternalEnv: ExternalEnv instance
         """
-        if not isinstance(name, str):
+        if not isinstance(name, basestring):
             raise TypeError('"name" argument in %s.get_env() should be an '
-                            'instance of str, not %s' %
+                            'instance of basestring, not %s' %
                             (cls.__name__, name.__class__.__name__))
 
         # filter the name
         import re
 
         # replace anything that doesn't start with '%' with [\s\(\)\-]+
-        pattern = re.sub(r"[^%\w]+", r"[\\s\\(\\)\\-]+", name_format)
+        pattern = re.sub(r'[^%\w]+', '[\s\(\)\-]+', name_format)
 
-        pattern = pattern.replace("%n", r"(?P<name>[\w\s]+)").replace(
-            "%e", r"(?P<extension>\.\w+)"
-        )
-        logger.debug("pattern : {}".format(pattern))
+        pattern = pattern \
+            .replace('%n', '(?P<name>[\w\s]+)') \
+            .replace('%e', '(?P<extension>\.\w+)')
+        logger.debug('pattern : %s' % pattern)
 
         match = re.search(pattern, name)
         env_name = None
