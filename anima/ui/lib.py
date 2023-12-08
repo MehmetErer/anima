@@ -2,7 +2,7 @@
 
 
 from anima import logger
-from anima.ui import IS_PYSIDE, IS_PYSIDE2, IS_PYQT4, IS_QTPY
+from anima.ui import IS_PYSIDE, IS_PYSIDE2, IS_PYSIDE6, IS_PYQT4, IS_QTPY
 
 if IS_PYQT4():
     logger.debug('importing PyQt4')
