@@ -1231,50 +1231,18 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
                     )
             elif choice == "Create Output Path...":
                 if not self.environment: # do this only in environmentless mode
-                    from anima.env.base import EnvironmentBase
                     from anima.env.external import ExternalEnvFactory
-                    env = EnvironmentBase()
                     env_factory = ExternalEnvFactory()
-                    env_name = self.environment_combo_box.currentText()
+                    env_name = str(self.environment_combo_box.currentText())
                     environment = env_factory.get_env(
                         env_name,
                         self.environment_name_format
                     )
 
-                    structure = environment.structure
-                    evaluated_structure = []
-                    for item in structure:
-                        try:
-                            eval_item = eval(item)
-                            evaluated_structure.append(eval(item))
-                        except NameError:
-                            evaluated_structure.append(item)
-
-                    output_filename = env.get_significant_name(version, include_project_code=False)
-                    if evaluated_structure[-1] in ['exr', 'jpg', 'jpeg', 'png', 'tga', 'tif', 'tiff']:
-                        output_filename = '%s.1001.%s' % (output_filename, evaluated_structure[-1])
-                    output_path = '/'.join(evaluated_structure)
-                    output_file_path = os.path.join(
-                        version.absolute_path,
-                        output_path,
-                        output_filename
-                    ).replace('\\', '/')
-
-                    try:
-                        os.makedirs(os.path.dirname(output_file_path))
-                    except OSError:
-                        pass
+                    # create folders based on env structure
+                    output_file_path = env_factory.evaluate_output_path(version, environment.output_path)
 
                     if os.path.isdir(os.path.dirname(output_file_path)):
-                        # try to create default mov output format folder along with evaluated structure too
-                        if evaluated_structure[-1] in ['exr', 'jpg', 'jpeg', 'png', 'tga', 'tif', 'tiff']:
-                            if os.path.split(os.path.split(output_file_path)[0])[1] == evaluated_structure[-1]:
-                                mov_folder = os.path.join(os.path.split(os.path.split(output_file_path)[0])[0], 'mov')
-                                try:
-                                    os.makedirs(mov_folder)
-                                except OSError:
-                                    pass
-
                         utils.open_browser_in_location(os.path.dirname(output_file_path))
 
                         clipboard = QtWidgets.QApplication.clipboard()
@@ -1351,7 +1319,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
                 else:
                     from anima.env.external import ExternalEnvFactory
                     env_factory = ExternalEnvFactory()
-                    env_name = self.environment_combo_box.currentText()
+                    env_name = str(self.environment_combo_box.currentText())
                     environment = env_factory.get_env(
                         env_name,
                         self.environment_name_format
@@ -2047,7 +2015,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         environment = self.environment
         if not environment:
             # get the environment
-            env_name = self.environment_combo_box.currentText()
+            env_name = str(self.environment_combo_box.currentText())
             from anima.env.external import ExternalEnvFactory
             env_factory = ExternalEnvFactory()
             environment = env_factory.get_env(
