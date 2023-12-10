@@ -7,17 +7,18 @@ from anima.env.base import EnvironmentBase
 
 
 external_environments = {
-    'MudBox': {
-        'name': 'MudBox',
-        'icon': 'mudbox.png',
-        'executable': {
-            'linux': 'mudbox',
-            'windows': 'mudbox.exe',
+    "MudBox": {
+        "name": "MudBox",
+        "icon": "mudbox.jpg",
+        "executable": {
+            "linux": "mudbox",
+            "windows": "mudbox.exe",
         },
-        'extensions': ['.mud'],
-        'structure': [
-            'Outputs',
-        ]
+        "extensions": [".mud"],
+        "structure": [
+            "Outputs",
+        ],
+        "output_path": []
     },
     #'ZBrush Project' : {
     #    'name': 'ZBrush Project',
@@ -27,48 +28,58 @@ external_environments = {
     #        'Outputs',
     #    ]
     #},
-    'ZBrush': {
-        'name': 'ZBrush',
-        'icon': 'zbrush.png',
-        'executable': {
-            'windows': 'zbrush.exe',
+    "ZBrush": {
+        "name": "ZBrush",
+        "icon": "zbrush.png",
+        "executable": {
+            "windows": "zbrush.exe",
         },
-        'extensions': ['.ztl'],
-        'structure': [
-            'Outputs',
+        "extensions": [".ztl"],
+        "structure": [
+            "Outputs",
+        ],
+        "output_path": []
+    },
+    "Unreal": {
+        "name": "Unreal",
+        "icon": "unreal.png",
+        "executable": {
+            "linux": "None",
+        },
+        "extensions": [".uproject"],
+        "structure": [
+            "Outputs",
+        ],
+        "output_path": [
+            "Outputs", "renders", "masterLayer"
         ]
     },
-    'Unreal': {
-        'name': 'Unreal',
-        'icon': 'unreal.png',
-        'executable': {
-            'linux': 'None',
+    "AfterEffects": {
+        "name": "AfterEffects",
+        "icon": "aftereffects.png",
+        "executable": {
+            "windows": "afterfx.exe",
         },
-        'extensions': ['.uproject'],
-        'structure': [
-            'Outputs', 'renders', "masterLayer"
+        "extensions": [".aep"],
+        "structure": [
+            "Outputs",
+        ],
+        "output_path": [
+            "Outputs", "version.take_name", "'v%03d' % version.version_number", "exr"
         ]
     },
-    'Flame': {
-        'name': 'Flame',
-        'icon': 'flame.png',
-        'executable': {
-            'linux': 'None',
+    "Flame": {
+        "name": "Flame",
+        "icon": "flame.png",
+        "executable": {
+            "linux": "None",
         },
-        'extensions': ['.flm'],
-        'structure': [
-            'Outputs', 'version.take_name', "'v%03d' % version.version_number", 'exr'
-        ]
-    },
-    'AfterEffects': {
-        'name': 'AfterEffects',
-        'icon': 'aftereffects.png',
-        'executable': {
-            'windows': 'afterfx.exe',
-        },
-        'extensions': ['.aep'],
-        'structure': [
-            'Outputs', 'version.take_name', "'v%03d' % version.version_number", 'exr'
+        "extensions": [".flm"],
+        "structure": [
+            "Outputs",
+        ],
+        "output_path": [
+            "Outputs", "version.take_name", "'v%03d' % version.version_number", "exr"
         ]
     }
 }
@@ -82,7 +93,7 @@ class ExternalEnv(EnvironmentBase):
     environment by setting its file extension etc.
     """
 
-    def __init__(self, name, structure=None, extensions=None, **kwargs):
+    def __init__(self, name, structure=None, extensions=None, output_path=None, **kwargs):
         """
 
         :param name: The name of this environment
@@ -94,10 +105,12 @@ class ExternalEnv(EnvironmentBase):
         self._name = None
         self._structure = None
         self._extensions = None
+        self._output_path = None
 
         self.name = self._validate_name(name)
         self.structure = self._validate_structure(structure)
         self.extensions = self._validate_extensions(extensions)
+        self.output_path = self._validate_output_path(output_path)
 
     def _validate_extensions(self, extensions):
         if not extensions:
@@ -168,9 +181,9 @@ class ExternalEnv(EnvironmentBase):
                              structure.__class__.__name__))
 
         for item in structure:
-            if not isinstance(item, basestring):
+            if not isinstance(item, str):
                 raise TypeError('All items in %s.structure should be an '
-                                'instance of basestring, an not %s' %
+                                'instance of str, an not %s' %
                                 (self.__class__.__name__,
                                  item.__class__.__name__))
 
@@ -193,6 +206,48 @@ class ExternalEnv(EnvironmentBase):
         :return: None
         """
         self._structure = self._validate_structure(structure)
+
+    def _validate_output_path(self, output_path):
+        """validates the given output_path value
+
+        :param str output_path:
+        :return: str
+        """
+        if output_path is None:
+            output_path = []
+
+        if not isinstance(output_path, list):
+            raise TypeError('%s.structure should be a list of strings, '
+                            'showing the output_path, not %s' %
+                            (self.__class__.__name__,
+                             output_path.__class__.__name__))
+
+        for item in output_path:
+            if not isinstance(item, str):
+                raise TypeError('All items in %s.output_path should be an '
+                                'instance of str, an not %s' %
+                                (self.__class__.__name__,
+                                 item.__class__.__name__))
+
+        return output_path
+
+    @property
+    def output_path(self):
+        """the output_path property getter
+
+        :return: str
+        """
+        return self._output_path
+
+    @output_path.setter
+    def output_path(self, output_path):
+        """the output_path property setter
+
+        :param list output_path: A list of string showing the desired output path on
+          that environment
+        :return: None
+        """
+        self._output_path = self._validate_output_path(output_path)
 
     def conform(self, version):
         """Conforms the version to this environment by setting its extension.
@@ -220,7 +275,7 @@ class ExternalEnv(EnvironmentBase):
         from stalker import Version
         if not isinstance(version, Version):
             raise TypeError(
-                '"version" argument in %s.initialize_structureshould be a '
+                '"version" argument in %s.initialize_structure should be a '
                 'stalker.version.Version instance, not %s' % (
                     self.__class__.__name__,
                     version.__class__.__name__
@@ -308,6 +363,55 @@ class ExternalEnvFactory(object):
     """
 
     @classmethod
+    def evaluate_output_path(cls, version, output_path_structure):
+        """Evaluates and creates folders based on output_path structure
+
+        :param output_path_structure:
+        :param version:
+        :return: output_file_path
+        """
+        output_file_path = ''
+        valid_extensions = ['exr', 'jpg', 'jpeg', 'png', 'tga', 'tif', 'tiff']
+
+        if version and output_path_structure:
+            try:
+                evaluated_structure = []
+                for item in output_path_structure:
+                    try:
+                        eval_item = eval(item)
+                        evaluated_structure.append(eval(item))
+                    except NameError:
+                        evaluated_structure.append(item)
+
+                output_filename = EnvironmentBase().get_significant_name(version, include_project_code=False)
+                if evaluated_structure[-1] in valid_extensions:
+                    output_filename = '%s.1001.%s' % (output_filename, evaluated_structure[-1])
+                output_path = '/'.join(evaluated_structure)
+                output_file_path = os.path.join(
+                    version.absolute_path,
+                    output_path,
+                    output_filename
+                ).replace('\\', '/')
+
+                try:
+                    os.makedirs(os.path.dirname(output_file_path))
+                except OSError:
+                    pass
+
+                # try to create default mov output format folder along with evaluated structure too
+                if evaluated_structure[-1] in valid_extensions:
+                    if os.path.split(os.path.split(output_file_path)[0])[1] == evaluated_structure[-1]:
+                        mov_folder = os.path.join(os.path.split(os.path.split(output_file_path)[0])[0], 'mov')
+                        try:
+                            os.makedirs(mov_folder)
+                        except OSError:
+                            pass
+            except IndexError:
+                pass
+
+        return output_file_path
+
+    @classmethod
     def get_env_names(cls, name_format="%n"):
         """returns a list of environment names which it is possible to create
         one environment.
@@ -324,8 +428,8 @@ class ExternalEnvFactory(object):
             env_data = external_environments[env_name]
             env_names.append(
                 name_format
-                .replace('%n', env_data['name'])
-                .replace('%e', env_data['extensions'][0])
+                .replace("%n", env_data["name"])
+                .replace("%e", env_data["extensions"][0])
             )
         return env_names
 
@@ -338,26 +442,26 @@ class ExternalEnvFactory(object):
 
         :return ExternalEnv: ExternalEnv instance
         """
-        if not isinstance(name, basestring):
+        if not isinstance(name, str):
             raise TypeError('"name" argument in %s.get_env() should be an '
-                            'instance of basestring, not %s' %
+                            'instance of str, not %s' %
                             (cls.__name__, name.__class__.__name__))
 
         # filter the name
         import re
 
         # replace anything that doesn't start with '%' with [\s\(\)\-]+
-        pattern = re.sub(r'[^%\w]+', '[\s\(\)\-]+', name_format)
+        pattern = re.sub(r"[^%\w]+", r"[\\s\\(\\)\\-]+", name_format)
 
-        pattern = pattern \
-            .replace('%n', '(?P<name>[\w\s]+)') \
-            .replace('%e', '(?P<extension>\.\w+)')
-        logger.debug('pattern : %s' % pattern)
+        pattern = pattern.replace("%n", r"(?P<name>[\w\s]+)").replace(
+            "%e", r"(?P<extension>\.\w+)"
+        )
+        logger.debug("pattern : {}".format(pattern))
 
         match = re.search(pattern, name)
         env_name = None
         if match:
-            env_name = match.group('name').strip()
+            env_name = match.group("name").strip()
 
         env_names = external_environments.keys()
         if env_name not in env_names:
