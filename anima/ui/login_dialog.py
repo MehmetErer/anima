@@ -2,7 +2,7 @@
 
 import anima
 from anima import logger
-from anima.ui import IS_PYQT4, IS_PYSIDE, IS_PYSIDE2
+from anima.ui import IS_PYQT4, IS_PYSIDE, IS_PYSIDE2, IS_PYSIDE6
 from anima.ui.base import AnimaDialogBase, ui_caller
 from anima.ui.lib import QtCore, QtGui, QtWidgets
 
@@ -11,6 +11,8 @@ if IS_PYSIDE():
     from anima.ui.ui_compiled import login_dialog_UI_pyside as login_dialog_UI
 elif IS_PYSIDE2():
     from anima.ui.ui_compiled import login_dialog_UI_pyside2 as login_dialog_UI
+elif IS_PYSIDE6():
+    from anima.ui.ui_compiled import login_dialog_UI_pyside6 as login_dialog_UI
 elif IS_PYQT4():
     from anima.ui.ui_compiled import login_dialog_UI_pyqt4 as login_dialog_UI
 
