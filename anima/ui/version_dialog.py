@@ -1640,6 +1640,15 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         )
         self.environment_combo_box.addItems(env_names)
 
+        # set env to Flame to default for no-environment mode if available
+        flame_index = \
+            self.environment_combo_box.findText(
+                'Flame (.flm)',
+                QtCore.Qt.MatchContains
+            )
+        if flame_index:
+            self.environment_combo_box.setCurrentIndex(flame_index)
+
         is_external_env = False
         env = self.environment
         if not self.environment:
