@@ -867,7 +867,7 @@ class ShotClip(object):
                     if len(parts) >= 4 and ext not in ['r3d', 'dng']:
                         import re
                         project_code_regex = re.compile("[A-Z]+")
-                        episode_code_regex = re.compile("[0-9]+|E[0-9]+")
+                        episode_code_regex = re.compile("[0-9]+|[A-Z][0-9]+")
                         scene_code_regex = re.compile("[A-Z0-9]+")
                         shot_code_regex = re.compile("[0-9]+")
                         project_code, episode_code, scene_code, shot_code = parts[0:4]
