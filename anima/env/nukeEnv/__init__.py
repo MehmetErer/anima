@@ -317,14 +317,14 @@ class Nuke(EnvironmentBase):
                 main_write_node["datatype"].setValue(0)     # 16 bit half
                 main_write_node["compression"].setValue(1)  # Zip (1 scanline)
                 # TODO: Tis is not generic. Fix ASAP.
-                if version.task.project.name == 'Helgoland':
+                if version.task.project.name in ['Helgoland', 'Kein Tier']:
                     main_write_node["compression"].setValue(3)  # PIZ Wavelet
                     main_write_node["metadata"].setValue(4)  # all metadata
             elif output_format_enum == 'mov':
                 main_write_node.knob('file_type').setValue(output_format_enum)
                 main_write_node["colorspace"].setValue('Output - Rec.709')
                 # TODO: Tis is not generic. Fix ASAP.
-                if version.task.project.name == 'Helgoland':
+                if version.task.project.name in ['Helgoland', 'Kein Tier']:
                     main_write_node["colorspace"].setValue('ACES - ACES2065-1')
                 # create and connect a transform for half res
                 # TODO: half res transform node for mov format might be optional
