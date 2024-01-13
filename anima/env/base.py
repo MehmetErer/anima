@@ -623,7 +623,7 @@ class EnvironmentBase(object):
             sig_name = version.nice_name
 
         #  TODO: this is not generic. fix ASAP.
-        if version.task.project.name == 'Helgoland':
+        if version.task.project.name in ['Helgoland', 'Kein Tier']:
             if version.take_name.lower() == 'zero':
                 a = version.nice_name.split('_')
                 a.pop(-2)
