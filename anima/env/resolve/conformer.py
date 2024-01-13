@@ -402,6 +402,7 @@ class ConformerUI(object):
 
         self.task_name_combo_box.addItem('Comp', -1)
         self.task_name_combo_box.addItem('Plate', 0)
+        self.task_name_combo_box.addItem('Zero', 1)
 
         self.ext_name_combo_box.addItem('exr', -1)
         self.ext_name_combo_box.addItem('png', 0)
@@ -669,7 +670,7 @@ class ConformerUI(object):
 
         if len(parts) >= 4:
             project_code_regex = re.compile("[A-Z]+")
-            episode_code_regex = re.compile("[0-9]+")
+            episode_code_regex = re.compile("[A-Z0-9]+")
             scene_code_regex = re.compile("[A-Z0-9]+")
             shot_code_regex = re.compile("[0-9]+")
             project_code, episode_code, scene_code, shot_code = parts[0:4]
