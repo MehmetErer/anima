@@ -629,9 +629,12 @@ class EnvironmentBase(object):
                 a.pop(-2)
                 a[-1] = a[-1].lower()
                 sig_name = '_'.join(a)
-            elif version.take_name == 'Main':
+            else:
                 a = version.nice_name.split('_')
                 a[-2] = a[-2].lower()
+                if version.task.project.name in ['Kein Tier']:
+                    a.pop(1)
+                    a[2] = a[2][-3:]
                 sig_name = '_'.join(a[:-1])
 
         if vendor_code:
