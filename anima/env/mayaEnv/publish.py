@@ -350,6 +350,36 @@ def check_file_texture_paths_with_bad_characters(progress_controller=None):
         )
 
 
+@publisher(LOOK_DEV_TYPES)
+def check_aovs(progress_controller=None):
+    """No AOVs in render settings
+
+    checks if AOVs exists in Look Development types
+    """
+    if progress_controller is None:
+        progress_controller = ProgressControllerBase()
+
+    aovs = pm.ls(type='RedshiftAOV')  # redshift
+    aovs += pm.ls(type='aiAOV')  # arnold
+    progress_controller.maximum = len(aovs)
+
+    progress_controller.complete()
+
+    if aovs:
+        raise PublishError('There are AOVs in your settings. Please remove them.')
+
+
+def check_aovs___fix():
+    """
+    tries to fix check_aovs
+    """
+    aovs = pm.ls(type='RedshiftAOV')  # redshift
+    aovs += pm.ls(type='aiAOV')  # arnold
+
+    for aov in aovs:
+        pm.delete(aov)
+
+
 @publisher
 def delete_unused_shading_nodes(progress_controller=None):
     """Delete unused shading nodes
