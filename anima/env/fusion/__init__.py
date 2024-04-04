@@ -1714,6 +1714,7 @@ class Fusion(EnvironmentBase):
         if version.task.project.name in ['Helgoland', 'Kein Tier']:
             try:
                 output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.Compression'] = 4
+                output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.AlphaEnable'] = 1
             except (KeyError, IndexError):
                 pass
 
