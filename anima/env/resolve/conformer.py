@@ -67,7 +67,7 @@ class ConformerUI(object):
         self.task_name_combo_box = None
         self.ext_name_combo_box = None
         self.plus_plates_check_box = None
-        self.alpha_only_check_box = None
+        self.plus_refs_check_box = None
         self.record_in_check_box = None
         self.slated_check_box = None
         self.use_current_timeline = None
@@ -255,16 +255,34 @@ class ConformerUI(object):
 
         h_layout4b = QtWidgets.QHBoxLayout()
 
+        self.filter_user_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.filter_user_check_box.setText('+ Filter User')
+        self.filter_user_check_box.stateChanged.connect(partial(self.filter_user_check_box_changed))
+        h_layout4b.addWidget(self.filter_user_check_box)
+
+        size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.user_name_combo_box = QtWidgets.QComboBox(self.parent_widget)
+        self.user_name_combo_box.setSizePolicy(size_policy)
+        h_layout4b.addWidget(self.user_name_combo_box)
+
+        self.main_layout.addLayout(h_layout4b)
+
+        h_layout4c = QtWidgets.QHBoxLayout()
+
         self.just_import_as_media_check_box = QtWidgets.QCheckBox(self.parent_widget)
         self.just_import_as_media_check_box.setText('Just Import to Media Library')
         self.just_import_as_media_check_box.stateChanged.connect(partial(self.just_import_as_media_check_box_changed))
-        h_layout4b.addWidget(self.just_import_as_media_check_box)
+        h_layout4c.addWidget(self.just_import_as_media_check_box)
 
         self.keep_ext_in_clip_names_check_box = QtWidgets.QCheckBox(self.parent_widget)
         self.keep_ext_in_clip_names_check_box.setText('Keep Extension in Clip Names')
-        h_layout4b.addWidget(self.keep_ext_in_clip_names_check_box)
+        h_layout4c.addWidget(self.keep_ext_in_clip_names_check_box)
 
-        self.main_layout.addLayout(h_layout4b)
+        self.no_cleanups_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.no_cleanups_check_box.setText('No Cleanups')
+        h_layout4c.addWidget(self.no_cleanups_check_box)
+
+        self.main_layout.addLayout(h_layout4c)
 
         h_layout5 = QtWidgets.QHBoxLayout()
 
@@ -285,6 +303,7 @@ class ConformerUI(object):
         size_policy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
         self.ext_name_combo_box = QtWidgets.QComboBox(self.parent_widget)
         self.ext_name_combo_box.setSizePolicy(size_policy)
+        self.ext_name_combo_box.currentIndexChanged.connect(partial(self.ext_name_combo_box_changed))
         h_layout5.addWidget(self.ext_name_combo_box)
 
         self.plus_plates_check_box = QtWidgets.QCheckBox(self.parent_widget)
@@ -292,9 +311,10 @@ class ConformerUI(object):
         self.plus_plates_check_box.stateChanged.connect(partial(self.plus_plates_check_box_changed))
         h_layout5.addWidget(self.plus_plates_check_box)
 
-        self.alpha_only_check_box = QtWidgets.QCheckBox(self.parent_widget)
-        self.alpha_only_check_box.setText('Alpha Only')
-        h_layout5.addWidget(self.alpha_only_check_box)
+        self.plus_refs_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.plus_refs_check_box.setText('+ References')
+        self.plus_refs_check_box.stateChanged.connect(partial(self.plus_refs_check_box_changed))
+        h_layout5.addWidget(self.plus_refs_check_box)
 
         self.main_layout.addLayout(h_layout5)
 
@@ -574,15 +594,26 @@ class ConformerUI(object):
         """
         task_in_text = self.task_name_combo_box.currentText()
         if task_in_text == 'Comp':
-            self.alpha_only_check_box.setChecked(0)
-            self.alpha_only_check_box.setEnabled(1)
+            self.plus_refs_check_box.setChecked(0)
+            self.plus_refs_check_box.setEnabled(1)
             self.plus_plates_check_box.setChecked(0)
             self.plus_plates_check_box.setEnabled(1)
         else:
-            self.alpha_only_check_box.setChecked(0)
-            self.alpha_only_check_box.setEnabled(0)
+            self.plus_refs_check_box.setChecked(0)
+            self.plus_refs_check_box.setEnabled(0)
             self.plus_plates_check_box.setChecked(0)
             self.plus_plates_check_box.setEnabled(0)
+
+    def ext_name_combo_box_changed(self, *args):
+        """runs when the ext_name_combo_box is changed
+        """
+        ext_in_text = self.ext_name_combo_box.currentText()
+        if ext_in_text == 'mov' or ext_in_text == 'mp4':
+            self.plus_refs_check_box.setChecked(0)
+            self.plus_refs_check_box.setEnabled(1)
+        else:
+            self.plus_refs_check_box.setChecked(0)
+            self.plus_refs_check_box.setEnabled(0)
 
     def filter_statuses_check_box_changed(self, state):
         """runs when the filter_status_check_box is changed
@@ -597,6 +628,27 @@ class ConformerUI(object):
             self.hrev_check_box.setEnabled(1)
             self.prev_check_box.setEnabled(1)
             self.completed_check_box.setEnabled(1)
+
+    def filter_user_check_box_changed(self, state):
+        """runs when the filter_user_check_box is changed
+        """
+        if state == 0:
+            self.user_name_combo_box.clear()
+            self.user_name_combo_box.setEnabled(0)
+        else:
+            self.user_name_combo_box.clear()
+            stalker_project = self.project_combo_box.get_current_project()
+            if not stalker_project:
+                self.filter_user_check_box.click()
+                QtWidgets.QMessageBox.critical(
+                    self.parent_widget,
+                    'Error',
+                    'Please Select a Stalker Project.'
+                )
+                return
+            for user in stalker_project.users:
+                self.user_name_combo_box.addItem(user.name, user)
+            self.user_name_combo_box.setEnabled(1)
 
     def just_import_as_media_check_box_changed(self, state):
         """runs when the just_import_as_media_check_box is changed
@@ -625,9 +677,26 @@ class ConformerUI(object):
             # self.ext_name_combo_box.setCurrentIndex(0)
             # self.ext_name_combo_box.setEnabled(0)
         else:
-            self.slated_check_box.setEnabled(1)
-            self.use_current_timeline.setEnabled(1)
-            self.ext_name_combo_box.setEnabled(1)
+            if not self.plus_refs_check_box.isChecked():
+                self.slated_check_box.setEnabled(1)
+                self.use_current_timeline.setEnabled(1)
+                self.ext_name_combo_box.setEnabled(1)
+
+    def plus_refs_check_box_changed(self, state):
+        """runs when the plus_refs_check_box is changed
+        """
+        if state != 0:
+            self.slated_check_box.setChecked(0)
+            self.slated_check_box.setEnabled(0)
+            self.use_current_timeline.setChecked(0)
+            self.use_current_timeline.setEnabled(0)
+            # self.ext_name_combo_box.setCurrentIndex(0)
+            # self.ext_name_combo_box.setEnabled(0)
+        else:
+            if not self.plus_plates_check_box.isChecked():
+                self.slated_check_box.setEnabled(1)
+                self.use_current_timeline.setEnabled(1)
+                self.ext_name_combo_box.setEnabled(1)
 
     def slated_check_box_changed(self, state):
         """runs when the slated_check_box is changed
@@ -762,6 +831,21 @@ class ConformerUI(object):
                                     and shot not in shots:
                                 shots.append(shot)
 
+        if self.filter_user_check_box.isChecked():
+            from stalker import User
+
+            user_shots = []
+            user_text = self.user_name_combo_box.currentText()
+            user = User.query.filter_by(name=user_text).first()
+            for shot in shots:
+                for t in shot.children:
+                    if t.is_leaf and user in t.resources and shot not in user_shots:
+                        user_shots.append(shot)
+                        break
+
+            if user_shots:
+                shots = user_shots
+
         if not shots:
             QtWidgets.QMessageBox.critical(
                 self.parent_widget,
@@ -795,6 +879,14 @@ class ConformerUI(object):
         import re
         from anima.env import base
         from stalker import Task, Version
+
+        if task_name == 'Reference':
+            ref_path = '%s/References/%s.%s' % (shot.absolute_path, shot.name, ext)
+            if os.path.exists(ref_path):
+                return ref_path
+            else:
+                return None
+
         task = Task.query.filter(Task.parent == shot).filter(Task.name == task_name).first()
         if not task and task_name == 'Comp':  # try Cleanup task
             task = Task.query.filter(Task.parent == shot).filter(Task.name == 'Cleanup').first()
@@ -802,7 +894,7 @@ class ConformerUI(object):
             return None
 
         if self.filter_statuses_check_box.isChecked():
-            if task_name != 'Plate':  # do not check status for plates
+            if task_name not in ['Plate', 'Reference']:  # do not check status for plates, references
                 valid_status_names = self.get_valid_statuses_from_ui()
                 if task.status.name not in valid_status_names:
                     return None
@@ -834,20 +926,11 @@ class ConformerUI(object):
         def get_file_paths(op, ext, ltn):  # output_path, ext, latest_task_name
             import glob
 
-            paths = None
-            if not self.alpha_only_check_box.isChecked():
-                paths = glob.glob("%s/*/%s/*%s.*.%s" % (op, ext, ltn, ext))
-                if not paths:  # try outputs with no version folders
-                    paths = glob.glob("%s/%s/*%s.*.%s" % (op, ext, ltn, ext))
-                if not paths:  # try video files (mov, mp4)
-                    paths = glob.glob("%s/*/%s/*%s.%s" % (op, ext, ltn, ext))
-            else:  # check for paths that contain "alpha" as text
-                version_folder = ltn.split('_')[-1]
-                paths = glob.glob("%s/%s/%s/*%s*.*.%s" % (op, version_folder, ext, 'alpha', ext))
-                if not paths:  # try outputs with no version folders
-                    paths = glob.glob("%s/%s/*%s*%s.*.%s" % (op, ext, 'alpha', version_folder, ext))
-                if not paths:  # try video files (mov, mp4)
-                    paths = glob.glob("%s/*/%s/*%s.%s" % (op, ext, ltn, ext))
+            paths = glob.glob("%s/*/%s/*%s.*.%s" % (op, ext, ltn, ext))
+            if not paths:  # try outputs with no version folders
+                paths = glob.glob("%s/%s/*%s.*.%s" % (op, ext, ltn, ext))
+            if not paths:  # try video files (mov, mp4)
+                paths = glob.glob("%s/*/%s/*%s.%s" % (op, ext, ltn, ext))
 
             return paths
 
@@ -1121,12 +1204,15 @@ class ConformerUI(object):
             plate_path_list = []
             plate_not_found_list = []
             plate_range_mismatch_list = []
+            ref_path_list = []
+            ref_not_found_list = []
             none_path_list = []
             for shot in shots:
                 print('Checking Shot... - %s' % shot.name)
 
                 clip_path = self.get_latest_output_path(shot, t_name, ext=extension)
-                if t_name == 'Comp' and clip_path is None:  # look for Cleanup task
+                if t_name == 'Comp' and clip_path is None \
+                        and not self.no_cleanups_check_box.isChecked():  # look for Cleanup task
                     clip_path = self.get_latest_output_path(shot, 'Cleanup', ext=extension)
 
                 if clip_path:
@@ -1142,6 +1228,14 @@ class ConformerUI(object):
                         plate_path_list.append(clip_path)
                         plate_not_found_list.append(clip_path)
 
+                if t_name == 'Comp' and clip_path and self.plus_refs_check_box.isChecked():
+                    ref_path = self.get_latest_output_path(shot, 'Reference', ext=extension)
+                    if ref_path:
+                        ref_path_list.append(ref_path)
+                    elif clip_path:  # add comp or cleanup clip to match timelines
+                        ref_path_list.append(clip_path)
+                        ref_not_found_list.append(clip_path)
+
                 if self.record_in_check_box.isChecked():
                     rc_in = shot.record_in
                     if not rc_in:
@@ -1154,6 +1248,8 @@ class ConformerUI(object):
             plate_path_list.sort()
             plate_not_found_list.sort()
             plate_range_mismatch_list.sort()
+            ref_path_list.sort()
+            ref_not_found_list.sort()
 
             if plate_path_list and self.plus_plates_check_box.isChecked():
                 if len(clip_path_list) != len(plate_path_list):
@@ -1173,10 +1269,19 @@ class ConformerUI(object):
                     except IndexError:
                         pass
 
+            if ref_path_list and self.plus_ref_check_box.isChecked():
+                if len(clip_path_list) != len(ref_path_list):
+                    print('--------------------------------------------------------------------------')
+                    print('ERROR: Comp / Reference mismatch! Contact Supervisor.')
+                    print('--------------------------------------------------------------------------')
+                    raise RuntimeError('Comp / Reference mismatch! Contact Supervisor.')
+
             print('--------------------------------------------------------------------------')
             for i in range(0, len(clip_path_list)):
                 if plate_path_list and self.plus_plates_check_box.isChecked():
                     print('%s  +  %s' % (clip_path_list[i], plate_path_list[i]))
+                elif ref_path_list and self.plus_ref_check_box.isChecked():
+                    print('%s  +  %s' % (clip_path_list[i], ref_path_list[i]))
                 else:
                     print(clip_path_list[i])
             print('--------------------------------------------------------------------------')
@@ -1192,6 +1297,11 @@ class ConformerUI(object):
             if plate_range_mismatch_list:
                 print('-----------------------PLATES RANGE MISMATCH------------------------------')
                 for p_path in plate_range_mismatch_list:
+                    print(p_path)
+                print('--------------------------------------------------------------------------')
+            if ref_not_found_list:
+                print('--------------------------REFS NOT FOUND--------------------------------')
+                for p_path in ref_not_found_list:
                     print(p_path)
                 print('--------------------------------------------------------------------------')
 
@@ -1211,6 +1321,13 @@ class ConformerUI(object):
                     media_pool = self.resolve_project.GetMediaPool()
                     media_pool.ImportTimelineFromFile(self.xml_path)
                     print('+ PLATES XML IMPORTED to Resolve')
+                if ref_path_list and self.plus_ref_check_box.isChecked():
+                    print('CREATING + REFS XML... Please Wait... ----------------------------')
+                    self.clip_paths_to_xml(ref_path_list, record_in_list, self.xml_path)
+                    print('+ REFS XML CREATED----------------------------')
+                    media_pool = self.resolve_project.GetMediaPool()
+                    media_pool.ImportTimelineFromFile(self.xml_path)
+                    print('+ REFS XML IMPORTED to Resolve')
                 # Fix shot clip names
                 if not self.keep_ext_in_clip_names_check_box.isChecked():
                     from anima.env.resolve.shot_tools import ShotManager
@@ -1233,6 +1350,8 @@ class ConformerUI(object):
             plate_path_list = []
             plate_not_found_list = []
             plate_range_mismatch_list = []
+            ref_path_list = []
+            ref_not_found_list = []
             none_path_list = []
             for shot in shots:
                 clip_info = None
@@ -1257,7 +1376,8 @@ class ConformerUI(object):
                                 status = task.status.name
                                 break
                     result.append(status)
-                if t_name == 'Comp' and clip_info is None:  # look for Cleanup task
+                if t_name == 'Comp' and clip_info is None \
+                        and not self.no_cleanups_check_box.isChecked():  # look for Cleanup task
                     result = self.get_latest_output_path(
                         shot, 'Cleanup', ext=extension, return_raw_values=True
                     )
@@ -1303,6 +1423,17 @@ class ConformerUI(object):
                             if clip_info not in plate_not_found_list:
                                 plate_not_found_list.append(clip_info)
 
+                if t_name == 'Comp' and clip_info and self.plus_refs_check_box.isChecked():
+                    ref_path = self.get_latest_output_path(shot, 'Reference', ext=extension)
+                    if ref_path:
+                        if ref_path not in ref_path_list:
+                            ref_path_list.append(ref_path)
+                    elif clip_info:  # add comp or cleanup clip to match timelines
+                        if clip_info not in ref_path_list:
+                            ref_path_list.append(clip_info)
+                            if clip_info not in ref_not_found_list:
+                                ref_not_found_list.append(clip_info)
+
                 if self.record_in_check_box.isChecked():
                     rc_in = shot.record_in
                     if not rc_in:
@@ -1315,6 +1446,8 @@ class ConformerUI(object):
             plate_path_list.sort()
             plate_not_found_list.sort()
             plate_range_mismatch_list.sort()
+            ref_path_list.sort()
+            ref_not_found_list.sort()
 
             existing_clip_names = []
             if self.exclude_clips_in_sel_clips_check_box.isChecked():
@@ -1342,6 +1475,7 @@ class ConformerUI(object):
 
                 remove_clip_info = []
                 remove_plate_info = []
+                remove_ref_info = []
                 for clip_info in clip_path_list:
                     clip_path = os.path.normpath(clip_info[0])
                     clip_name = os.path.basename(clip_path).split('.')[0]
@@ -1355,17 +1489,28 @@ class ConformerUI(object):
                                     remove_plate_info.append(plate_clip_info)
                                     # assume that plates only have 1 version so break the loop
                                     break
+                        if self.plus_refs_check_box.isChecked():
+                            # TODO: this only works in default File Structure. It must be more generic.
+                            shot_code = '_'.join(os.path.basename(clip_path).split('_')[:4])
+                            for ref_clip_info in ref_path_list:
+                                if os.path.basename(ref_clip_info).startswith(shot_code):
+                                    remove_ref_info.append(ref_clip_info)
+                                    break
                 for remove_clip in remove_clip_info:
                     clip_path_list.remove(remove_clip)
                     print("clip already exists: %s  -> REMOVED" % os.path.basename(remove_clip[0]))
                 for remove_clip in remove_plate_info:
                     plate_path_list.remove(remove_clip)
                     print("clip already exists: %s  -> REMOVED" % os.path.basename(remove_clip[0]))
+                for remove_clip in remove_ref_info:
+                    ref_path_list.remove(remove_clip)
+                    print("clip already exists: %s  -> REMOVED" % os.path.basename(remove_clip[0]))
 
             if self.sg_location_check_box.isChecked():
                 import os
                 remove_sg_clip_info = []
                 remove_sg_plate_info = []
+                remove_sg_ref_info = []
                 sg_data = self.get_sg_data(self.location_line_edit.text())
                 for clip_info in clip_path_list:
                     clip_path = os.path.normpath(clip_info[0])
@@ -1382,6 +1527,13 @@ class ConformerUI(object):
                                         remove_sg_plate_info.append(plate_clip_info)
                                         # assume that plates only have 1 version so break the loop
                                         break
+                            if self.plus_refs_check_box.isChecked():
+                                # TODO: Fix DRY. This only works in default File Structure. It must be more generic.
+                                shot_code = '_'.join(os.path.basename(clip_path).split('_')[:4])
+                                for ref_clip_info in ref_path_list:
+                                    if os.path.basename(ref_clip_info).startswith(shot_code):
+                                        remove_sg_ref_info.append(ref_clip_info)
+                                        break
                             break
                 for remove_sg_clip in remove_sg_clip_info:
                     clip_path_list.remove(remove_sg_clip)
@@ -1389,6 +1541,9 @@ class ConformerUI(object):
                     plate_path_list.remove(remove_plate_clip)
                     plate_base_name = os.path.basename(remove_plate_clip[0])
                     print("plate also removed: %s  -> REMOVED for SHOTGRID" % plate_base_name)
+                for remove_ref_clip in remove_sg_ref_info:
+                    ref_path_list.remove(remove_ref_clip)
+                    print("reference also removed: %s  -> REMOVED for SHOTGRID" % remove_ref_clip)
 
             if plate_path_list and self.plus_plates_check_box.isChecked():
                 if len(clip_path_list) != len(plate_path_list):
@@ -1413,10 +1568,24 @@ class ConformerUI(object):
                     except IndexError:
                         pass
 
+            if ref_path_list and self.plus_refs_check_box.isChecked():
+                if len(clip_path_list) != len(ref_path_list):
+                    print('--------------------------------------------------------------------------')
+                    print('ERROR: Comp / Reference mismatch! | %i / %i |Contact Supervisor.'
+                          % (len(clip_path_list), len(ref_path_list)))
+                    print('--------------------------------------------------------------------------')
+                    print(clip_path_list)
+                    print('--------------------------------------------------------------------------')
+                    print(ref_path_list)
+                    raise RuntimeError('Comp / Reference mismatch! | %i / %i | Contact Supervisor.'
+                                       % (len(clip_path_list), len(ref_path_list)))
+
             print('--------------------------------------------------------------------------')
             for i in range(0, len(clip_path_list)):
                 if plate_path_list and self.plus_plates_check_box.isChecked():
                     print('%s  +  %s' % (clip_path_list[i][0], plate_path_list[i][0]))
+                elif ref_path_list and self.plus_refs_check_box.isChecked():
+                    print('%s  +  %s' % (clip_path_list[i][0], ref_path_list[i]))
                 else:
                     print(clip_path_list[i][0])
             print('--------------------------------------------------------------------------')
@@ -1525,6 +1694,16 @@ class ConformerUI(object):
                             ])[0]
                             media_pool.AppendToTimeline([media_pool_item])
 
+                # create a new timeline for references if specified
+                if ref_path_list and self.plus_refs_check_box.isChecked():
+                    timeline_name = '%s_References' % self.generate_timeline_name()
+                    print("Creating new timeline with name: %s" % timeline_name)
+                    timeline = media_pool.CreateEmptyTimeline(timeline_name)
+
+                    for clip_info in ref_path_list:
+                        media_pool_item = media_pool.ImportMedia([clip_info])[0]
+                        media_pool.AppendToTimeline(media_pool_item)
+
             else:
                 print('No Outputs found with given specs!')
 
@@ -1577,26 +1756,7 @@ class ConformerUI(object):
                         continue
 
                     try:
-                        has_alpha = False
                         raw_seconds = os.path.getmtime(last_version.absolute_full_path)
-
-                        # If we are looking for *Alpha*, comp name will not match with outputs...
-                        # because the output is rendered from Main take with a different saver path
-                        # so we have to look for the first file rendered which had *Alpha* in its name
-                        if self.alpha_only_check_box.isChecked():
-                            ext = self.ext_name_combo_box.currentText()
-                            t_path = task.absolute_path
-                            output_path = os.path.join(t_path, 'Outputs', 'Main')
-                            latest_task_name = os.path.splitext(last_version.filename)[0]
-                            version_folder = latest_task_name.split('_')[-1]
-                            file_paths = glob.glob("%s/%s/%s/*%s*.*.%s" % (output_path, version_folder,
-                                                                           ext, 'alpha', ext))
-                            if not file_paths:  # try outputs with no version folders
-                                file_paths = glob.glob("%s/%s/*%s*%s.*.%s" % (output_path, ext, 'alpha',
-                                                                              version_folder, ext))
-                            if file_paths:
-                                raw_seconds = os.path.getmtime(file_paths[0])
-                                has_alpha = True
 
                         local_time = time.localtime(raw_seconds)
                         modification_date = datetime.datetime(local_time.tm_year,
@@ -1611,8 +1771,7 @@ class ConformerUI(object):
                                 last_version.updated_by.name
                             )
                             item_data = [item_label, shot.id]
-                            if not self.alpha_only_check_box.isChecked() or has_alpha is True:
-                                update_list.append(item_data)
+
                     except BaseException:
                         continue
 
@@ -1656,6 +1815,21 @@ class ConformerUI(object):
             shot = Shot.query.get(shot_id)
             if shot:
                 shots.append(shot)
+
+        if self.filter_user_check_box.isChecked():
+            from stalker import User
+
+            user_shots = []
+            user_text = self.user_name_combo_box.currentText()
+            user = User.query.filter_by(name=user_text).first()
+            for shot in shots:
+                for t in shot.children:
+                    if t.is_leaf and user in t.resources and shot not in user_shots:
+                        user_shots.append(shot)
+                        break
+
+            if user_shots:
+                shots = user_shots
 
         if record_in:
             self.conform_shots(shots)
