@@ -1218,7 +1218,7 @@ class Fusion(EnvironmentBase):
 
         # Date
         import datetime
-        today = datetime.datetime.today()
+        today = datetime.datetime.today()  # datetime.datetime.today() , datetime.datetime(2024, 4, 13)
         date_time_format = "%Y-%m-%d"
         slate_node.Input7 = today.strftime(date_time_format)
 
@@ -1242,7 +1242,16 @@ class Fusion(EnvironmentBase):
                 time.sleep(1)
             else:
                 print("found MediaOut1 node!")
-                media_out_node.Input = slate_node
+                create_ocio = True
+                if create_ocio is True:
+                    ocio_node = self.comp.AddTool("OCIOColorSpace")
+                    ocio_node.SetInput("OCIOConfig", "T:\\DEV\\OpenColorIO-Configs\\aces_1.2\\config.ocio")
+                    ocio_node.SetInput("SourceSpace", "ACES - ACES2065-1")
+                    ocio_node.SetInput("OutputSpace", "Output - Rec.709")
+                    ocio_node.Input = slate_node
+                    media_out_node.Input = ocio_node
+                else:
+                    media_out_node.Input = slate_node
             i += 1
 
         return slate_node
@@ -1711,7 +1720,7 @@ class Fusion(EnvironmentBase):
             })
 
         # TODO: This is not generic. Fix ASAP.
-        if version.task.project.name in ['Helgoland', 'Kein Tier']:
+        if version.task.project.name in ['Helgoland', 'Kein Tier', 'Wolf Hall']:
             try:
                 output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.Compression'] = 4
                 output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.AlphaEnable'] = 1
