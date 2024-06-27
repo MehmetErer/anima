@@ -642,6 +642,12 @@ class EnvironmentBase(object):
                     a = version.nice_name.split('_')
                     a.pop(-2)
                     sig_name = 'O_%s' % '_'.join(a[:-1])
+            if version.task.project.name in ['Partisan'] and version.task.type.name == 'Comp':
+                if version.take_name.lower() == 'main':
+                    a = version.nice_name.split('_')
+                    a[-2] = a[-2].lower()
+                    a.pop(1)
+                    sig_name = '%s_output_aces' % '_'.join(a[:-1])
 
             if vendor_code:
                 sig_name = '%s_%s' % (sig_name, vendor_code)
