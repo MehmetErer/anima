@@ -224,7 +224,7 @@ class UI(object):
                 pm.text(l='<b>Life Time (hours)</b>')
                 pm.intField(
                     'cgru_afanasy__life_time',
-                    v=pm.optionVar.get('cgru_afanasy__life_time_ov', 240)
+                    v=pm.optionVar.get('cgru_afanasy__life_time_ov', 120)
                 )
 
             with pm.rowLayout(nc=2, adj=2, cw2=(labels_width, 50)):
@@ -953,7 +953,7 @@ This system will be updated in Afanasy."""
             if life_time > 0:
                 job.setTimeLife(life_time * 3600)
             else:
-                job.setTimeLife(240 * 3600)
+                job.setTimeLife(120 * 3600)
 
             job.setCmdPost('deletefiles -s "%s"' % os.path.abspath(filename))
             if pause:
