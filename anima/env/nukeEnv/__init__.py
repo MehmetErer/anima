@@ -326,7 +326,7 @@ class Nuke(EnvironmentBase):
                 main_write_node.knob('file_type').setValue(output_format_enum)
                 main_write_node["colorspace"].setValue('Output - Rec.709')
                 # TODO: Tis is not generic. Fix ASAP.
-                if version.task.project.name in ['Helgoland', 'Kein Tier', 'Wolf Hall']:
+                if version.task.project.name in ['Helgoland', 'Kein Tier']:
                     main_write_node["colorspace"].setValue('ACES - ACES2065-1')
                 # create and connect a transform for half res
                 # TODO: half res transform node for mov format might be optional
