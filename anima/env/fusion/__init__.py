@@ -1726,6 +1726,11 @@ class Fusion(EnvironmentBase):
                 output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.AlphaEnable'] = 1
             except (KeyError, IndexError):
                 pass
+        if version.task.project.name in ['Partisan']:
+            try:
+                output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.AlphaEnable'] = 1
+            except (KeyError, IndexError):
+                pass
 
         # create or update OCIOColorSpace_RENDER node as separated alone in flow view if exists in data
         has_ocio_in = False
