@@ -1007,7 +1007,7 @@ workspace -fr "translatorData" "Outputs/data";
         logger.debug('set_playblast_file_name() took %f seconds' % (end - start))
 
     @classmethod
-    def set_render_resolution(cls, width, height, pixel_aspect=1.0):
+    def set_render_resolution(cls, width, height, pixel_aspect):
         """Sets the resolution of the current scene
 
         :param width: The width of the output image
@@ -1019,7 +1019,7 @@ workspace -fr "translatorData" "Outputs/data";
         dRes.height.set(height)
         dRes.pixelAspect.set(pixel_aspect)
         # also set the device aspect
-        dRes.deviceAspectRatio.set(float(width) / float(height))
+        dRes.deviceAspectRatio.set(float(width*pixel_aspect) / float(height))
 
     @classmethod
     def set_project(cls, version):
