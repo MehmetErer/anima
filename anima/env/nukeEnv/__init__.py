@@ -319,7 +319,7 @@ class Nuke(EnvironmentBase):
                 main_write_node["metadata"].setValue(4)  # all metadata
                 main_write_node["autocrop"].setValue(1)  # autocrop
                 # TODO: Tis is not generic. Fix ASAP.
-                if version.task.project.name in ['Helgoland', 'Kein Tier', 'Wolf Hall', 'Castle']:
+                if version.task.project.name in ['Helgoland', 'Kein Tier', 'Wolf Hall', 'Castle', 'Drowak']:
                     main_write_node["compression"].setValue(3)  # PIZ Wavelet
                     main_write_node["metadata"].setValue(4)  # all metadata
             elif output_format_enum == 'mov':
