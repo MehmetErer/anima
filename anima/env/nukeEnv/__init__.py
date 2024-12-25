@@ -51,7 +51,7 @@ class Nuke(EnvironmentBase):
         self.project_directory = os.path.dirname(version.absolute_path)
 
         # Update color management
-        self.update_color_management()
+        self.update_color_management(version)
 
         # create the main write node
         self.create_main_write_nodes(version)
@@ -134,7 +134,7 @@ class Nuke(EnvironmentBase):
         self.replace_external_paths()
 
         # update color management settings
-        self.update_color_management()
+        self.update_color_management(version)
 
         # return True to specify everything was ok and an empty list
         # for the versions those needs to be updated
@@ -322,6 +322,8 @@ class Nuke(EnvironmentBase):
                 if version.task.project.name in ['Helgoland', 'Kein Tier', 'Wolf Hall', 'Castle', 'Drowak']:
                     main_write_node["compression"].setValue(3)  # PIZ Wavelet
                     main_write_node["metadata"].setValue(4)  # all metadata
+                if version.task.project.name in ['Chaplin Dortlusu']:
+                    main_write_node["colorspace"].setValue('Input - ARRI - V3 LogC (EI160) - Wide Gamut')
             elif output_format_enum == 'mov':
                 main_write_node.knob('file_type').setValue(output_format_enum)
                 main_write_node["colorspace"].setValue('Output - Rec.709')
@@ -478,7 +480,7 @@ Status: {{version.task.status.name}}
 
         return template.render(**template_vars)
 
-    def update_color_management(self):
+    def update_color_management(self, version):
         """updates color management
         """
         root = self.get_root_node()
@@ -492,6 +494,15 @@ Status: {{version.task.status.name}}
             root["int16Lut"].setValue(148)       # Utility - sRGB - Texture
             root["logLut"].setValue(5)           # Input - ADX - ADX10
             root["floatLut"].setValue(0)         # ACES 2065-1
+        # TODO: Tis is not generic. Fix ASAP.
+        elif version.task.project.name in ['Chaplin Dortlusu']:
+            root["colorManagement"].setValue(1)  # OCIO
+            root["workingSpaceLUT"].setValue(2)  # ACEScg
+            root["monitorLut"].setValue(0)  # sRGB
+            root["int8Lut"].setValue(6)  # Utility - sRGB - Texture
+            root["int16Lut"].setValue(5)  # Utility - sRGB - Texture
+            root["logLut"].setValue(3)  # Input - ADX - ADX10
+            root["floatLut"].setValue('Input - ARRI - V3 LogC (EI160) - Wide Gamut')
         else:
             root["colorManagement"].setValue(1)  # OCIO
             root["workingSpaceLUT"].setValue(5)  # ACES 2065-1
