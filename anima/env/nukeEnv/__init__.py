@@ -494,15 +494,6 @@ Status: {{version.task.status.name}}
             root["int16Lut"].setValue(148)       # Utility - sRGB - Texture
             root["logLut"].setValue(5)           # Input - ADX - ADX10
             root["floatLut"].setValue(0)         # ACES 2065-1
-        # TODO: Tis is not generic. Fix ASAP.
-        elif version.task.project.name in ['Chaplin Dortlusu']:
-            root["colorManagement"].setValue(1)  # OCIO
-            root["workingSpaceLUT"].setValue(2)  # ACEScg
-            root["monitorLut"].setValue(0)  # sRGB
-            root["int8Lut"].setValue(6)  # Utility - sRGB - Texture
-            root["int16Lut"].setValue(5)  # Utility - sRGB - Texture
-            root["logLut"].setValue(3)  # Input - ADX - ADX10
-            root["floatLut"].setValue('Input - ARRI - V3 LogC (EI160) - Wide Gamut')
         else:
             root["colorManagement"].setValue(1)  # OCIO
             root["workingSpaceLUT"].setValue(5)  # ACES 2065-1
@@ -511,3 +502,12 @@ Status: {{version.task.status.name}}
             root["int16Lut"].setValue(5)  # Utility - sRGB - Texture
             root["logLut"].setValue(3)  # Input - ADX - ADX10
             root["floatLut"].setValue(5)  # ACES 2065-1
+            # TODO: Tis is not generic. Fix ASAP.
+            if version.task.project.name in ['Chaplin Dortlusu']:
+                root["colorManagement"].setValue(1)  # OCIO
+                root["workingSpaceLUT"].setValue(2)  # ACEScg
+                root["monitorLut"].setValue(0)  # sRGB
+                root["int8Lut"].setValue(6)  # Utility - sRGB - Texture
+                root["int16Lut"].setValue(5)  # Utility - sRGB - Texture
+                root["logLut"].setValue(3)  # Input - ADX - ADX10
+                root["floatLut"].setValue('Input - ARRI - V3 LogC (EI160) - Wide Gamut')
