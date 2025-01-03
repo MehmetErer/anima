@@ -87,20 +87,49 @@ class UI(object):
         self.windows_name = 'cgru_afanasy_wnd'
         self.window = None
 
+    def set_rs_maya_ocio_settings(self):
+        """sets ocio settings in maya redshift
+        """
+        for i in range(0, 5):  # for some reason run this a few times until configFilePath is valid
+            pm.mel.eval('colorManagementPrefs -edit -cmEnabled 1;')
+            pm.mel.eval('colorManagementPrefs -edit -cmConfigFileEnabled 1;')
+            pm.mel.eval('colorManagementPrefs -edit -configFilePath '
+                        '"<MAYA_RESOURCES>/OCIO-configs/Maya2022-default/config.ocio";')
+            pm.mel.eval('colorManagementPrefs -edit -renderingSpaceName "ACEScg";')
+            pm.mel.eval('colorManagementPrefs -edit -displayName "Rec.1886 / Rec.709 video";')
+            pm.mel.eval('colorManagementPrefs -edit -viewName "ACES 1.0 SDR-video";')
+
+            if pm.mel.eval('colorManagementPrefs -query -configFilePath;') == \
+                    "<MAYA_RESOURCES>/OCIO-configs/Maya2022-default/config.ocio":
+                break
+
+        # set rs postfx attrs for rs render view
+        try:
+            if not pm.objExists('defaultRedshiftPostEffects'):
+                pm.createNode('RedshiftPostEffects', name='defaultRedshiftPostEffects')
+            rs_post_fx = pm.PyNode('defaultRedshiftPostEffects')
+            rs_post_fx.lutApplyBeforeColorManagement.set(1)
+        except pm.MayaNodeError:
+            pass
+
+        return 1
+
     def show(self):
-        # force OCIO settings for multi platform support in Maya 2022> before showing the UI
+        # force default OCIO settings for farm
         if int(pm.about(v=1)) >= 2022:
-            if pm.mel.eval('colorManagementPrefs -query -configFilePath;').startswith('<MAYA_RESOURCES>') is False:
-                pm.confirmDialog(
-                    title='OCIO Settings Error !',
-                    message='Current OCIO Settings are <b>NOT allowed</b> in Farm!<br>'
-                            '<br>Fix OCIO Settings via related scripts.',
-                    button=['Ok'],
-                    defaultButton='Ok',
-                    cancelButton='Ok',
-                    dismissString='Ok'
+            if pm.mel.eval('colorManagementPrefs -query -configFilePath;') != \
+                    '<MAYA_RESOURCES>/OCIO-configs/Maya2022-default/config.ocio' or \
+                    pm.mel.eval('colorManagementPrefs -query -renderingSpaceName;') != 'ACEScg':
+
+                response = pm.confirmDialog(
+                    title='OCIO Settings',
+                    message='<b>OCIO</b> settings are not default!<br>'
+                            '<br>Do you want to Fix or Continue?',
+                    button=['Fix OCIO', 'Continue Anyway'],
+                    defaultButton='Fix OCIO'
                 )
-                return
+                if response == 'Fix OCIO':
+                    self.set_rs_maya_ocio_settings()
 
         # some default values
         section_label_height = 30
