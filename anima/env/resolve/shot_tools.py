@@ -1256,6 +1256,28 @@ class ShotManagerUI(object):
         color_list.next()
         check_clip_length_horizontal_layout.addWidget(check_clip_length_button)
 
+        check_metadata_horizontal_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.addLayout(check_metadata_horizontal_layout)
+
+        # metadata names
+        metadata_label = QtWidgets.QLabel(self.parent_widget)
+        metadata_label.setText("Metadata Names")
+        metadata_label.setMinimumWidth(60)
+        metadata_label.setMaximumWidth(60)
+        check_metadata_horizontal_layout.addWidget(metadata_label)
+
+        self.metadata_line_edit = QtWidgets.QLineEdit(self.parent_widget)
+        self.metadata_line_edit.setText('Adopted Neutral')
+        check_metadata_horizontal_layout.addWidget(self.metadata_line_edit)
+
+        # Check Metadata button
+        check_metadata_button = QtWidgets.QPushButton(self.parent_widget)
+        check_metadata_button.setText("Check Metadata                                        ")
+        set_widget_bg_color(check_metadata_button, color_list)
+        check_metadata_button.clicked.connect(partial(self.check_metadata_button_clicked))
+        color_list.next()
+        check_metadata_horizontal_layout.addWidget(check_metadata_button)
+
         # ---------------------------------------------------------
         self.main_layout.addStretch()
 
@@ -1292,7 +1314,7 @@ class ShotManagerUI(object):
                 if shots.get(stalker_shot.name):
                     shots[stalker_shot.name][0] = shot_length
 
-        ignored_clip_names =[]
+        ignored_clip_names = []
         for timeline_item in timeline_items:
             duration = timeline_item.GetDuration()
             if duration != 1: # this probably means this is a sequence
@@ -1326,6 +1348,57 @@ class ShotManagerUI(object):
             print('--------------------------------------')
         else:
             print('CLIP LENGTHS ARE ALL CORRECT.')
+
+    def check_metadata_button_clicked(self):
+        """runs when the check_metadata_button is clicked
+        """
+        import os
+        sm = ShotManager()
+        clips = sm.get_clips()
+
+        def check_metadata(img_path, names):
+            """queries metadata from given image
+            """
+            import subprocess
+            info = {}
+            process = subprocess.Popen(['exiftool', img_path],
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT,
+                                       universal_newlines=True)
+
+            for tag in process.stdout:
+                line = tag.strip().split(':')
+                info[line[0].strip()] = line[-1].strip()
+
+            check = True
+            for name in names:
+                try:
+                    if not info[str(name)]:
+                        break
+                except (IndexError, KeyError):
+                    check = False
+                    pass
+
+            return check
+
+        metadata_names = self.metadata_line_edit.text().split(',')
+        for i in range(len(metadata_names)):
+            metadata_names[i] = metadata_names[i].strip(' ')
+
+        no_metadata = []
+        for clip in clips:
+            clip_item = clip.GetMediaPoolItem()
+            dir_name = os.path.dirname(clip_item.GetClipProperty('File Path'))
+            base_name = os.path.basename(clip_item.GetClipProperty('File Path')).split('.')[0]
+            clip_path = '%s/%s.1011.exr' % (dir_name, base_name)
+            print(clip_path)
+            if check_metadata(clip_path, metadata_names) is False:
+                no_metadata.append(clip_item)
+
+        if no_metadata:
+            print('============ NO METADATA =============')
+            for clip in no_metadata:
+                print(clip.GetName())
 
     def fill_preset_combo_box(self):
         """fills the preset comboBox
