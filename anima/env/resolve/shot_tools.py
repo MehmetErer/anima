@@ -308,7 +308,7 @@ class ShotManager(object):
             shot.record_in = shot.clip.GetStart()
 
     @classmethod
-    def create_render_jobs(cls, shot_clips, handle=0, take_name=None, preset_name=None):
+    def create_render_jobs(cls, shot_clips, handle=0, take_name=None, preset_name=None, new=False):
         """creates render jobs
         """
         if take_name is None:
@@ -318,7 +318,7 @@ class ShotManager(object):
             preset_name = DEFAULT_RENDER_PRESET_NAME
 
         for shot_clip in shot_clips:
-            shot_clip.create_render_job(handle=handle, take_name=take_name, preset_name=preset_name)
+            shot_clip.create_render_job(handle=handle, take_name=take_name, preset_name=preset_name, new_version=new)
 
     def fix_shot_clip_names(self):
         """Removes the .[####-####].exr part of the clip name for image sequences
@@ -734,13 +734,14 @@ class ShotClip(object):
             DBSession.commit()
         return type_instance
 
-    def create_render_job(self, handle=0, take_name=None, preset_name=None):
+    def create_render_job(self, handle=0, take_name=None, preset_name=None, new_version=False):
         """creates render job for the clip
 
         :param int handle: The handles on each side of the clip. The default value is 0.
         :param str take_name: The take_name of the created Version. Default value is DEFAULT_DEFAULT_TAKE_NAME.
         :param str preset_name: The template name in Resolve to use when exporting the shot. The default is
           DEFAULT_RENDER_PRESET_NAME.
+        :param str new_version: Boolean for allowing new versions.
         """
         if take_name is None:
             take_name = DEFAULT_TAKE_NAME
@@ -785,6 +786,25 @@ class ShotClip(object):
         version = Version.query.filter(Version.task == plate_task).\
             filter(Version.take_name == take_name).order_by(Version.version_number.desc()).first()
         assert isinstance(version, Version)
+
+        # create next version if necessary
+        if version.version_number >= 1 and new_version is True:
+            v_num = version.version_number + 1
+            v = Version(
+                task=plate_task,
+                take_name=take_name,
+                version_number=v_num,
+                created_by=self.get_logged_in_user(),
+                updated_by=self.get_logged_in_user(),
+                description='Autocreated by Resolve',
+            )
+            from anima.env import blackmagic
+            resolve = blackmagic.get_resolve()
+            version_info = resolve.GetVersion()
+            v.created_with = 'Resolve%s.%s' % (version_info[0], version_info[1])
+            DBSession.add(v)
+            DBSession.commit()
+            version = v
 
         from anima.env.base import EnvironmentBase
         version_sig_name = EnvironmentBase.get_significant_name(version, include_project_code=False)
@@ -1206,13 +1226,23 @@ class ShotManagerUI(object):
         self.refresh_render_presets_button.clicked.connect(partial(self.fill_preset_combo_box))
         render_preset_horizontal_layout.addWidget(self.refresh_render_presets_button)
 
+        create_render_jobs_horizontal_layout = QtWidgets.QHBoxLayout()
+        self.main_layout.addLayout(create_render_jobs_horizontal_layout)
+
+        self.create_new_versions_check_box = QtWidgets.QCheckBox(self.parent_widget)
+        self.create_new_versions_check_box.setText("New Versions")
+        self.create_new_versions_check_box.setChecked(False)
+        self.create_new_versions_check_box.setToolTip("Create New Versions for Specified Take")
+        self.create_new_versions_check_box.setFixedWidth(120)
+        create_render_jobs_horizontal_layout.addWidget(self.create_new_versions_check_box)
+
         # Create Render Jobs button
         create_shots_and_render_jobs_button = QtWidgets.QPushButton(self.parent_widget)
-        create_shots_and_render_jobs_button.setText("Create Shots and Render Jobs")
-        self.main_layout.addWidget(create_shots_and_render_jobs_button)
+        create_shots_and_render_jobs_button.setText("Create Shots and Render Jobs                                     ")
         set_widget_bg_color(create_shots_and_render_jobs_button, color_list)
         create_shots_and_render_jobs_button.clicked.connect(partial(self.create_render_jobs_callback))
         color_list.next()
+        create_render_jobs_horizontal_layout.addWidget(create_shots_and_render_jobs_button)
 
         # Update Shot Thumbnail button
         update_shot_thumbnail_button = QtWidgets.QPushButton(self.parent_widget)
@@ -1789,7 +1819,22 @@ class ShotManagerUI(object):
         success = False
         shot_clips = []
         if clicked_button == all_shots:
+            if self.create_new_versions_check_box.isChecked():
+                answer = QtWidgets.QMessageBox.question(
+                    self.parent_widget,
+                    "Continue ?",
+                    "New versions check box is checked!<br/>"
+                    "This will create new versions for all clips in timeline<br/>"
+                    "Create Render Jobs?",
+                    QtWidgets.QMessageBox.Yes,
+                    QtWidgets.QMessageBox.No
+                )
+                if answer == QtWidgets.QMessageBox.No:
+                    print("Render Job for %s's Plate [%s] take is Cancelled by User.")
+                    return
+
             shot_clips = shot_manager.get_shot_clips()
+
         elif clicked_button == current_shot:
             shot_clip = shot_manager.get_current_shot_clip()
 
@@ -1811,7 +1856,7 @@ class ShotManagerUI(object):
                         "Continue ?",
                         "%s 's Plate Task:<br/>"
                         "Already has version in <b>%s</b> take.<br/>"
-                        "Create Render Job Anyway?" % (shot.name, take_name),
+                        "This will overwrite Plates. Create Render Job Anyway?" % (shot.name, take_name),
                         QtWidgets.QMessageBox.Yes,
                         QtWidgets.QMessageBox.No
                     )
@@ -1820,11 +1865,15 @@ class ShotManagerUI(object):
                         shot_clips.append(shot_clip)
                     else:
                         print("Render Job for %s's Plate [%s] take is Cancelled by User." % (shot.name, take_name))
+                        return
                 else:  # means there is no version at all so add the clip
                     shot_clips.append(shot_clip)
 
+        new_versions = False
+        if self.create_new_versions_check_box.isChecked():
+            new_versions = True
         try:
-            shot_manager.create_render_jobs(shot_clips, handle, take_name, preset_name)
+            shot_manager.create_render_jobs(shot_clips, handle, take_name, preset_name, new_versions)
             if success:
                 QtWidgets.QMessageBox.information(
                     self.parent_widget,
