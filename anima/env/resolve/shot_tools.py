@@ -492,7 +492,7 @@ class ShotClip(object):
             DBSession.commit()
 
         # Create a dummy version if there is non
-        from stalker import Version
+        """from stalker import Version
         with DBSession.no_autoflush:
             all_versions = Version.query.filter(Version.task == plate_task)\
                 .filter(Version.take_name == take_name).all()
@@ -510,7 +510,7 @@ class ShotClip(object):
             version_info = resolve.GetVersion()
             v.created_with = 'Resolve%s.%s' % (version_info[0], version_info[1])
             DBSession.add(v)
-            DBSession.commit()
+            DBSession.commit()"""
 
         # set the status the task
         with DBSession.no_autoflush:
@@ -785,15 +785,31 @@ class ShotClip(object):
         from stalker import Version
         version = Version.query.filter(Version.task == plate_task).\
             filter(Version.take_name == take_name).order_by(Version.version_number.desc()).first()
-        assert isinstance(version, Version)
 
         # create next version if necessary
-        if version.version_number >= 1 and new_version is True:
-            v_num = version.version_number + 1
+        if version:
+            assert isinstance(version, Version)
+            if new_version is True:
+                v_num = version.version_number + 1
+                v = Version(
+                    task=plate_task,
+                    take_name=take_name,
+                    version_number=v_num,
+                    created_by=self.get_logged_in_user(),
+                    updated_by=self.get_logged_in_user(),
+                    description='Autocreated by Resolve',
+                )
+                from anima.env import blackmagic
+                resolve = blackmagic.get_resolve()
+                version_info = resolve.GetVersion()
+                v.created_with = 'Resolve%s.%s' % (version_info[0], version_info[1])
+                DBSession.add(v)
+                DBSession.commit()
+                version = v
+        else:
             v = Version(
                 task=plate_task,
                 take_name=take_name,
-                version_number=v_num,
                 created_by=self.get_logged_in_user(),
                 updated_by=self.get_logged_in_user(),
                 description='Autocreated by Resolve',
@@ -1843,30 +1859,34 @@ class ShotManagerUI(object):
                 from stalker.db.session import DBSession
 
                 # prompt user if there is already a version created under specified take
-                shot = shot_clip.get_shot()
-                plate_type = Type.query.filter(Type.name == 'Plate').first()
-                with DBSession.no_autoflush:
-                    plate_task = Task.query.filter(Task.parent == shot).filter(Task.type == plate_type).first()
-                version = Version.query.filter(Version.task == plate_task). \
-                    filter(Version.take_name == take_name).order_by(Version.version_number.desc()).first()
+                if not self.create_new_versions_check_box.isChecked():
+                    shot = shot_clip.get_shot()
+                    plate_type = Type.query.filter(Type.name == 'Plate').first()
+                    with DBSession.no_autoflush:
+                        plate_task = Task.query.filter(Task.parent == shot).filter(Task.type == plate_type).first()
+                    version = Version.query.filter(Version.task == plate_task). \
+                        filter(Version.take_name == take_name).order_by(Version.version_number.desc()).first()
 
-                if version:
-                    answer = QtWidgets.QMessageBox.question(
-                        self.parent_widget,
-                        "Continue ?",
-                        "%s 's Plate Task:<br/>"
-                        "Already has version in <b>%s</b> take.<br/>"
-                        "This will overwrite Plates. Create Render Job Anyway?" % (shot.name, take_name),
-                        QtWidgets.QMessageBox.Yes,
-                        QtWidgets.QMessageBox.No
-                    )
+                    if version:
+                        answer = QtWidgets.QMessageBox.question(
+                            self.parent_widget,
+                            "Continue ?",
+                            "%s 's Plate Task:<br/>"
+                            "Already has version in <b>%s</b> take.<br/>"
+                            "This will overwrite Plates.<br/>"
+                            "Create Render Job Anyway?" % (shot.name, take_name),
+                            QtWidgets.QMessageBox.Yes,
+                            QtWidgets.QMessageBox.No
+                        )
 
-                    if answer == QtWidgets.QMessageBox.Yes:
+                        if answer == QtWidgets.QMessageBox.Yes:
+                            shot_clips.append(shot_clip)
+                        else:
+                            print("Render Job for %s's Plate [%s] take is Cancelled by User." % (shot.name, take_name))
+                            return
+                    else:  # means there is no version at all so add the clip
                         shot_clips.append(shot_clip)
-                    else:
-                        print("Render Job for %s's Plate [%s] take is Cancelled by User." % (shot.name, take_name))
-                        return
-                else:  # means there is no version at all so add the clip
+                else:
                     shot_clips.append(shot_clip)
 
         new_versions = False
