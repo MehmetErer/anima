@@ -1104,7 +1104,7 @@ class Fusion(EnvironmentBase):
         ).replace('\\', '/')
 
         # make the path Project: relative
-        output_file_full_path = 'Project:\\%s' % os.path.relpath(
+        output_file_full_path = 'Project:%s' % os.path.relpath(
             output_file_full_path,
             os.path.dirname(version.absolute_path)
         )
