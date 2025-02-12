@@ -644,6 +644,9 @@ class EnvironmentBase(object):
                     a.pop(1)
                     a.pop(1)
                     sig_name = '%s' % '_'.join(a[:-1])
+            if version.task.project.name in ['Castle']:
+                if version.take_name.lower() == 'main':
+                    sig_name = sig_name.replace('CP3_001_', 'CP3_')
             if version.task.project.name in ['Wolf Hall']:
                 if version.take_name.lower() == 'main':
                     a = version.nice_name.split('_')
