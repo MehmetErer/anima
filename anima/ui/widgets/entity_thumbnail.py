@@ -63,7 +63,7 @@ class EntityThumbnailWidget(QtWidgets.QWidget):
         self.thumbnail_graphics_view.setInteractive(False)
         self.thumbnail_graphics_view.setRenderHints(
             QtGui.QPainter.Antialiasing |
-            QtGui.QPainter.HighQualityAntialiasing |
+            # QtGui.QPainter.HighQualityAntialiasing | # not supported in PySide6
             QtGui.QPainter.SmoothPixmapTransform |
             QtGui.QPainter.TextAntialiasing
         )
