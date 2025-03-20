@@ -205,8 +205,20 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         )
 
         QtCore.QObject.connect(
+            self.filter_by_project_combo_box,
+            QtCore.SIGNAL('currentTextChanged(QString)'),
+            self.filter_by_project_combo_box_changed
+        )
+
+        QtCore.QObject.connect(
             self.filter_by_entity_type_combo_box,
             QtCore.SIGNAL('currentIndexChanged(QString)'),
+            self.filter_by_entity_type_combo_box_changed
+        )
+
+        QtCore.QObject.connect(
+            self.filter_by_entity_type_combo_box,
+            QtCore.SIGNAL('currentTextChanged(QString)'),
             self.filter_by_entity_type_combo_box_changed
         )
 
