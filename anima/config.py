@@ -118,3 +118,19 @@ class Config(ConfigBase):
                 if group in user.groups:
                     return True
         return False
+
+    def is_coordinator(self, user):
+        """A predicate that returns if the user is a coordinator
+        """
+        if not user:
+            return False
+
+        from stalker import Group
+        coordinator_users_groups = Group.query \
+            .filter(Group.name.in_(['Coordinators'])) \
+            .all()
+        if coordinator_users_groups:
+            for group in coordinator_users_groups:
+                if group in user.groups:
+                    return True
+        return False
