@@ -376,6 +376,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             self.tasks_combo_box_index_changed
         )
 
+        QtCore.QObject.connect(
+            self.tasks_combo_box,
+            QtCore.SIGNAL('currentTextChanged(QString)'),
+            self.tasks_combo_box_index_changed
+        )
+
         # start_time_edit
         QtCore.QObject.connect(
             self.start_time_edit,
@@ -397,6 +403,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         QtCore.QObject.connect(
             self.resource_combo_box,
             QtCore.SIGNAL('currentIndexChanged(QString)'),
+            self.resource_changed
+        )
+
+        QtCore.QObject.connect(
+            self.resource_combo_box,
+            QtCore.SIGNAL('currentITextChanged(QString)'),
             self.resource_changed
         )
 
