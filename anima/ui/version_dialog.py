@@ -892,6 +892,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             self.recent_files_combo_box_index_changed
         )
 
+        QtCore.QObject.connect(
+            self.recent_files_combo_box,
+            QtCore.SIGNAL("currentTextChanged(QString)"),
+            self.recent_files_combo_box_index_changed
+        )
+
         # find_from_path_lineEdit
         QtCore.QObject.connect(
             self.find_from_path_push_button,
