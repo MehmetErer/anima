@@ -231,6 +231,12 @@ class TaskDetailWidget(QtWidgets.QWidget):
             self.type_field_changed
         )
 
+        QtCore.QObject.connect(
+            self.type_field,
+            QtCore.SIGNAL('currentTextChanged(QString)'),
+            self.type_field_changed
+        )
+
     @property
     def task(self):
         """fill the ui with the data
