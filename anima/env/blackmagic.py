@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import os
-import imp
+try:
+    import imp
+except ImportError:
+    pass
 import sys
 
 
