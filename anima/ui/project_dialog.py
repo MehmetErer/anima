@@ -23,6 +23,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
     """The Project Dialog
     """
 
+    max_folder_name_length = 18
     max_project_name_length = 32
 
     def __init__(self, parent=None, project=None):
@@ -103,7 +104,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         # ----------------------
         # Code Fields
         self.code_label = QtWidgets.QLabel(self)
-        self.code_label.setText("Code")
+        self.code_label.setText("Folder Name")
         self.project_info_form_layout.setWidget(
             1,
             QtWidgets.QFormLayout.LabelRole,
@@ -415,6 +416,17 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         # set size policies
         # self.name_line_edit
 
+        from anima import defaults
+        from stalker import LocalSession
+        local_session = LocalSession()
+        logged_in_user = local_session.logged_in_user
+
+        if not defaults.is_power_user(logged_in_user):
+            self.update_structure_push_button.setEnabled(0)
+            self.create_structure_push_button.setEnabled(0)
+            self.update_repository_push_button.setEnabled(0)
+            self.create_repository_pushButton.setEnabled(0)
+
         self.type_combo_box.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding,
             QtWidgets.QSizePolicy.Fixed
@@ -441,8 +453,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         )
 
         # invalidate the name and code fields by default
-        self.name_line_edit.set_invalid('Enter a name')
-        self.code_line_edit.set_invalid('Enter a code')
+        self.name_line_edit.set_invalid('Enter a name (Title Case)')
+        self.code_line_edit.set_invalid('Enter folder name (Upper Case)')
+
+        # disable code name in update mode
+        if self.mode == 'Update':
+            self.code_line_edit.setEnabled(0)
 
         # update type field
         from stalker import Type
@@ -523,7 +539,11 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
     def name_line_edit_changed(self, text):
         """runs when the name_line_edit text has changed
         """
-        if re.findall(r'[^a-zA-Z0-9\-_ ]+', text):
+        #  force title case
+        text = text.title()
+        self.name_line_edit.setText(text)
+
+        if re.findall(r'[^a-zA-Z0-9\- ]+', text):
             self.name_line_edit.set_invalid('Invalid character')
         else:
             if text == '':
@@ -531,23 +551,28 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             else:
                 self.name_line_edit.set_valid()
 
-        # update code field also
-        formatted_text = re.sub(r'[^A-Z0-9_]+', '', text)
-        self.code_line_edit.setText(formatted_text)
+        # update code field also in create mode
+        if self.mode == 'Create':
+            formatted_text = text.upper().replace(' ', '_')
+            self.code_line_edit.setText(formatted_text)
 
     def code_line_edit_changed(self, text):
         """runs when the code_line_edit text has changed
         """
+        #  force upper case and spaces to underscores
+        text = text.upper().replace(' ', '_')
+        self.code_line_edit.setText(text)
+
         if re.findall(r'[^a-zA-Z0-9_]+', text):
             self.code_line_edit.set_invalid('Invalid character')
         else:
             if text == '':
-                self.code_line_edit.set_invalid('Enter a code')
+                self.code_line_edit.set_invalid('Enter Folder Name')
             else:
-                if len(text) > self.max_project_name_length:
+                if len(text) > self.max_folder_name_length:
                     self.code_line_edit.set_invalid(
-                        'Code is too long (>%s)' %
-                        self.max_project_name_length
+                        'Folder Name is too long (>%s)' %
+                        self.max_folder_name_length
                     )
                 else:
                     self.code_line_edit.set_valid()
@@ -758,7 +783,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             QtWidgets.QMessageBox.critical(
                 self,
                 'Error',
-                'Please fix <b>code</b> field!'
+                'Please fix <b>folder name</b> field!'
             )
             return
         code = self.code_line_edit.text()
