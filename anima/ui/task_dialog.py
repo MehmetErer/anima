@@ -560,10 +560,22 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             self.entity_type_combo_box_changed
         )
 
+        QtCore.QObject.connect(
+            self.entity_type_combo_box,
+            QtCore.SIGNAL('currentTextChanged(QString)'),
+            self.entity_type_combo_box_changed
+        )
+
         # project_combo_box changed
         QtCore.QObject.connect(
             self.projects_combo_box,
             QtCore.SIGNAL('currentIndexChanged(QString)'),
+            self.projects_combo_box_changed
+        )
+
+        QtCore.QObject.connect(
+            self.projects_combo_box,
+            QtCore.SIGNAL('currentTextChanged(QString)'),
             self.projects_combo_box_changed
         )
 
@@ -616,6 +628,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             self.resources_combo_box_changed
         )
 
+        QtCore.QObject.connect(
+            self.resources_combo_box,
+            QtCore.SIGNAL('currentTextChanged(QString)'),
+            self.resources_combo_box_changed
+        )
+
         # resources_list_widget doubleClicked
         QtCore.QObject.connect(
             self.resources_list_widget,
@@ -627,6 +645,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         QtCore.QObject.connect(
             self.responsible_combo_box,
             QtCore.SIGNAL('currentIndexChanged(QString)'),
+            self.responsible_combo_box_changed
+        )
+
+        QtCore.QObject.connect(
+            self.responsible_combo_box,
+            QtCore.SIGNAL('currentTextChanged(QString)'),
             self.responsible_combo_box_changed
         )
 
@@ -652,6 +676,14 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
     def _set_defaults(self):
         """sets the defaults fro the ui
         """
+        from anima import defaults
+        from stalker import LocalSession
+        local_session = LocalSession()
+        logged_in_user = local_session.logged_in_user
+
+        if not defaults.is_power_user(logged_in_user):
+            self.code_line_edit.setEnabled(0)
+
         # hide validators
         self.parent_task_validator_label.setVisible(False)
 
@@ -1411,15 +1443,36 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
     def name_line_edit_changed(self, text):
         """runs when the name_line_edit text has changed
         """
-        # if any([True for c in text if ord(c) >= 128]):
-        #     self.name_line_edit.set_invalid('Turkce karakter kullanma!!!!')
-        # else:
-        #     self.name_line_edit.set_valid()
+        import os
+        import re
+
+        #  force title case for Assets
+        if self.entity_type_combo_box.currentText() == 'Asset':
+            text = text.title().replace(' ', '_')  # do not allow spaces
+            self.name_line_edit.setText(text)
+
+        #  force upper case for Sequences
+        if self.entity_type_combo_box.currentText() == 'Sequence':
+            text = text.upper().replace(' ', '_')  # do not allow spaces
+            self.name_line_edit.setText(text)
 
         if re.findall(r'[^a-zA-Z0-9_ ]+', text):
             self.name_line_edit.set_invalid('Invalid character')
         else:
             self.name_line_edit.set_valid()
+
+        #  force default stalker shot naming convention
+        if self.entity_type_combo_box.currentText() == 'Shot':
+            text = text.upper().replace(' ', '_')  # force uppercase and do not allow spaces
+            self.name_line_edit.setText(text)
+            if len(text.split('_')) == 4 and \
+                    re.findall(re.compile("[A-Z0-9]{2,}"), text.split('_')[0]) == [text.split('_')[0]] and \
+                    re.findall(re.compile("[0-9]{3}"), text.split('_')[1]) == [text.split('_')[1]] and \
+                    re.findall(re.compile("[0-9]{3}[A-Z]{1}|[0-9]{3}"), text.split('_')[2]) == [text.split('_')[2]] and \
+                    re.findall(re.compile("[0-9]{4}"), text.split('_')[3]) == [text.split('_')[3]]:
+                self.name_line_edit.set_valid()
+            else:
+                self.name_line_edit.set_invalid('Use Stalker default naming convention! CODE_000_000(A)_0000')
 
         if text == '':
             self.name_line_edit.set_invalid('Please enter a name!')
@@ -1430,6 +1483,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         # remove multiple under scores
         formatted_text = re.sub('[_]+', '_', formatted_text)
 
+        # update code field also
         self.code_line_edit.setText(formatted_text)
 
     def code_line_edit_changed(self, text):
