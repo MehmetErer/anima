@@ -105,11 +105,11 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         # set the tooltip
         self.users_double_list_widget\
             .primary_list_widget.setToolTip(
-                "Right Click to Create/Update FilenameTemplates"
+                "Double Click to Add User to Project"
             )
         self.users_double_list_widget\
             .secondary_list_widget.setToolTip(
-                "Right Click to Create/Update FilenameTemplates"
+                "Double Click to Remove User from Project"
             )
 
         # Button Box
@@ -124,6 +124,13 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
     def _setup_signals(self):
         """setup ui signals
         """
+
+        QtCore.QObject.connect(
+            self.projects_combo_box,
+            QtCore.SIGNAL("currentTextChanged(QString)"),
+            self.project_changed
+        )
+
         QtCore.QObject.connect(
             self.projects_combo_box,
             QtCore.SIGNAL("currentIndexChanged(QString)"),
@@ -202,11 +209,13 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
                 for u in DBSession.query(User.name)
                     .filter(~User.id.in_(project_user_ids)).all()
             ]
+            users_not_in_project.sort()
         else:
             users_not_in_project = [
                 u.name
                 for u in DBSession.query(User.name).all()
             ]
+            users_not_in_project.sort()
 
         self.users_double_list_widget.add_primary_items(
             users_not_in_project
@@ -214,7 +223,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
 
         users_in_project = \
             [u.name for u in project_users]
-
+        users_in_project.sort()
         self.users_double_list_widget.add_secondary_items(
             users_in_project
         )
