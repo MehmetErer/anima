@@ -1605,7 +1605,7 @@ def create_structure(entity):
         project = entity
         task = None
         custom_template = project.structure.custom_template
-        tasks = project.tasks
+        tasks = []
 
     elif isinstance(entity, Task):
         task = entity
