@@ -9,12 +9,13 @@ class DuplicateTaskHierarchyDialog(QtWidgets.QDialog):
     """custom dialog for duplicating task hierarchies
     """
 
-    def __init__(self, parent=None, duplicated_task_name='', *args, **kwargs):
+    def __init__(self, parent=None, duplicated_task_name='', entity_type_name='Task', *args, **kwargs):
         super(DuplicateTaskHierarchyDialog, self).__init__(
             parent=parent, *args, **kwargs
         )
 
         self.duplicated_task_name = duplicated_task_name
+        self.entity_type_name = entity_type_name
 
         # storage for widgets
         self.main_layout = None
@@ -41,19 +42,146 @@ class DuplicateTaskHierarchyDialog(QtWidgets.QDialog):
 
         # the label
         self.label = QtWidgets.QLabel(self)
-        self.label.setText('Duplicated Task Name:')
+        self.label.setText('Duplicated [%s] Name:' % self.entity_type_name)
         self.main_layout.addWidget(self.label)
 
         # the line edit
-        self.line_edit = QtWidgets.QLineEdit(self)
+        self.validator_label = QtWidgets.QLabel("Validator Message", self)
+        self.validator_label.setStyleSheet("color: rgb(255, 0, 0);")
+
+        from anima.ui.widgets import ValidatedLineEdit
+        self.line_edit = ValidatedLineEdit(
+            message_field=self.validator_label
+        )
+
         self.line_edit.setText(self.duplicated_task_name)
         self.main_layout.addWidget(self.line_edit)
+        self.main_layout.addWidget(self.validator_label)
 
         # the check box
         self.check_box = QtWidgets.QCheckBox(self)
         self.check_box.setText('Keep resources')
         self.check_box.setChecked(True)
         self.main_layout.addWidget(self.check_box)
+
+        # the button box
+        self.button_box = QtWidgets.QDialogButtonBox(self)
+        self.button_box.setOrientation(QtCore.Qt.Horizontal)
+        self.button_box.setStandardButtons(
+            QtWidgets.QDialogButtonBox.Cancel |
+            QtWidgets.QDialogButtonBox.Ok
+        )
+        self.main_layout.addWidget(self.button_box)
+
+        # setup signals
+
+        QtCore.QObject.connect(
+            self.line_edit,
+            QtCore.SIGNAL('textChanged(QString)'),
+            self.line_edit_changed
+        )
+
+        QtCore.QObject.connect(
+            self.button_box,
+            QtCore.SIGNAL("accepted()"),
+            self.accept
+        )
+        QtCore.QObject.connect(
+            self.button_box,
+            QtCore.SIGNAL("rejected()"),
+            self.reject
+        )
+
+    def line_edit_changed(self, text):
+        """runs when the line_edit text has changed
+        """
+        import os
+        import re
+
+        #  force title case for Assets
+        if self.entity_type_name == 'Asset':
+            text = text.title().replace(' ', '_')  # do not allow spaces
+            self.line_edit.setText(text)
+
+        #  force upper case for Sequences
+        if self.entity_type_name == 'Sequence':
+            text = text.upper().replace(' ', '_')  # do not allow spaces
+            self.line_edit.setText(text)
+
+        if re.findall(r'[^a-zA-Z0-9_ ]+', text):
+            self.line_edit.set_invalid('Invalid character')
+        else:
+            self.line_edit.set_valid()
+
+        #  force default stalker shot naming convention
+        if self.entity_type_name == 'Shot':
+            text = text.upper().replace(' ', '_')  # force uppercase and do not allow spaces
+            self.line_edit.setText(text)
+            if len(text.split('_')) == 4 and \
+                    re.findall(re.compile("[A-Z0-9]{2,}"), text.split('_')[0]) == [text.split('_')[0]] and \
+                    re.findall(re.compile("[0-9]{3}"), text.split('_')[1]) == [text.split('_')[1]] and \
+                    re.findall(re.compile("[0-9]{3}[A-Z]{1}|[0-9]{3}"), text.split('_')[2]) == [text.split('_')[2]] and \
+                    re.findall(re.compile("[0-9]{4}"), text.split('_')[3]) == [text.split('_')[3]]:
+                self.line_edit.set_valid()
+            else:
+                self.line_edit.set_invalid('Use Stalker default naming convention! CODE_000_000(A)_0000')
+
+        if text == '':
+            self.line_edit.set_invalid('Please enter a name!')
+
+
+class StartEndDateDialog(QtWidgets.QDialog):
+    """custom dialog for duplicating task hierarchies
+    """
+
+    def __init__(self, parent=None, task_name='', *args, **kwargs):
+        super(StartEndDateDialog, self).__init__(
+            parent=parent, *args, **kwargs
+        )
+
+        self.task_name = task_name
+
+        # storage for widgets
+        self.main_layout = None
+        self.label = None
+        self.line_edit = None
+        self.check_box = None
+        self.button_box = None
+
+        # setup dialog
+        self._setup_dialog()
+
+    def _setup_dialog(self):
+        """create the UI elements
+        """
+        # set window title
+        self.setWindowTitle("Set Start End Date")
+
+        # set window size
+        self.resize(285, 118)
+
+        # create the main layout
+        self.main_layout = QtWidgets.QFormLayout()
+        self.setLayout(self.main_layout)
+
+        # the start end date
+        form_field_index = 0
+        self.start_end_date_label = QtWidgets.QLabel("Start/End Date", self)
+        self.main_layout.setWidget(
+            form_field_index,
+            QtWidgets.QFormLayout.LabelRole,
+            self.start_end_date_label
+        )
+        self.horizontal_layout_3 = QtWidgets.QHBoxLayout()
+        self.start_date_edit = QtWidgets.QDateEdit(self)
+        self.horizontal_layout_3.addWidget(self.start_date_edit)
+        self.end_date_edit = QtWidgets.QDateEdit(self)
+        self.horizontal_layout_3.addWidget(self.end_date_edit)
+        self.main_layout.setLayout(
+            form_field_index,
+            QtWidgets.QFormLayout.FieldRole,
+            self.horizontal_layout_3
+        )
 
         # the button box
         self.button_box = QtWidgets.QDialogButtonBox(self)
@@ -102,7 +230,10 @@ class TaskTreeView(QtWidgets.QTreeView):
 
         # allow multiple selection
         if allow_multi_selection:
-            self.setSelectionMode(self.ExtendedSelection)
+            try:
+                self.setSelectionMode(self.ExtendedSelection)
+            except AttributeError:
+                self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
 
         # delegate = TaskItemDelegate(self)
         # self.setItemDelegate(delegate)
@@ -256,6 +387,7 @@ class TaskTreeView(QtWidgets.QTreeView):
         delete_task_action = None
         export_to_json_action = None
         import_from_json_action = None
+        start_end_date_action = None
         no_deps_action = None
         create_project_structure_action = None
         update_project_action = None
@@ -277,7 +409,7 @@ class TaskTreeView(QtWidgets.QTreeView):
         if task_id:
             entity = SimpleEntity.query.get(task_id)
 
-        reload_action = menu.addAction(u'\uf0e8 Reload')
+        reload_action = menu.addAction(u'Reload')  # \uf0e8
 
         # sub menus
         create_sub_menu = menu.addMenu('Create')
@@ -285,33 +417,50 @@ class TaskTreeView(QtWidgets.QTreeView):
 
         if defaults.is_power_user(logged_in_user):
             # create the Create Project menu item
-            create_project_action = create_sub_menu.addAction(u'\uf0e8 Create Project...')
+            create_project_action = create_sub_menu.addAction(u'Create Project...')  # \uf0e8
 
             if isinstance(entity, Project):
                 # this is a project!
                 if defaults.is_power_user(logged_in_user):
-                    update_project_action = update_sub_menu.addAction(u'\uf044 Update Project...')
-                    assign_users_action = menu.addAction(u'\uf0c0 Assign Users...')
-                    create_project_structure_action = create_sub_menu.addAction(u'\uf115 Create Project Structure')
-                    create_child_task_action = create_sub_menu.addAction(u'\uf0ae Create Child Task...')
+                    update_project_action = update_sub_menu.addAction(u'Update Project...')  # \uf044
+                    assign_users_action = menu.addAction(u'Assign Users...')  # \uf0c0
+                    create_project_structure_action = create_sub_menu.addAction(u'Create Project Structure')  # \uf115
+                    create_child_task_action = create_sub_menu.addAction(u'Create Child Task...')  # \uf0ae
                     # Export and Import JSON
                     create_sub_menu.addSeparator()
-                    # export_to_json_action = create_sub_menu.addAction(u'\uf1f8 Export To JSON...')
+                    # export_to_json_action = create_sub_menu.addAction(u'Export To JSON...')  # \uf1f8
 
-                    import_from_json_action = create_sub_menu.addAction(u'\uf1f8 Import From JSON...')
+                    import_from_json_action = create_sub_menu.addAction(u'Import From JSON...')  # \uf1f8
+            if isinstance(entity, Task):
+                start_end_date_action = menu.addAction(u'Set Start End Date...')  # \uf1f8
+
+        elif defaults.is_coordinator(logged_in_user):
+            # create the Create Project menu item
+            create_project_action = create_sub_menu.addAction(u'Create Project...')  # \uf0e8
+
+            if isinstance(entity, Project):
+                # this is a project!
+                if defaults.is_coordinator(logged_in_user):
+                    update_project_action = update_sub_menu.addAction(u'Update Project...')  # \uf044
+                    assign_users_action = menu.addAction(u'Assign Users...')  # \uf0c0
+                    create_project_structure_action = create_sub_menu.addAction(u'Create Project Structure')  # \uf115
+                    # Export and Import JSON
+                    create_sub_menu.addSeparator()
+                    # export_to_json_action = create_sub_menu.addAction(u'\uf1f8 Export To JSON...')  # \uf1f8
+                    import_from_json_action = create_sub_menu.addAction(u'Import From JSON...')  # \uf1f8
 
         if entity:
             # separate the Project and Task related menu items
             menu.addSeparator()
 
-            open_in_web_browser_action = menu.addAction(u'\uf14c Open In Web Browser...')
-            open_in_file_browser_action = menu.addAction(u'\uf07c Browse Folders...')
-            copy_url_action = menu.addAction(u'\uf0c5 Copy URL')
-            copy_id_to_clipboard = menu.addAction(u'\uf0c5 Copy ID to clipboard')
+            open_in_web_browser_action = menu.addAction(u'Open In Web Browser...')  # \uf14c
+            open_in_file_browser_action = menu.addAction(u'Browse Folders...')  # \uf07c
+            copy_url_action = menu.addAction(u'Copy URL')  # \uf0c5
+            copy_id_to_clipboard = menu.addAction(u'Copy ID to clipboard')  # \uf0c5
 
             if isinstance(entity, Task):
                 # this is a task
-                create_project_structure_action = create_sub_menu.addAction(u'\uf115 Create Task Folder Structure')
+                create_project_structure_action = create_sub_menu.addAction(u'Create Task Folder Structure')  # \uf115
 
                 task = entity
                 from stalker import Status
@@ -320,13 +469,13 @@ class TaskTreeView(QtWidgets.QTreeView):
                 status_cmpl = Status.query.filter(Status.code == 'CMPL').first()
                 if logged_in_user in task.resources and task.status not in [status_wfd, status_prev, status_cmpl]:
                     create_sub_menu.addSeparator()
-                    create_time_log_action = create_sub_menu.addAction(u'\uf073 Create TimeLog...')
+                    create_time_log_action = create_sub_menu.addAction(u'Create TimeLog...')  # \uf073
 
                 # Add Depends To menu
                 menu.addSeparator()
                 depends = task.depends
                 if depends:
-                    depends_to_menu = menu.addMenu(u'\uf090 Depends To')
+                    depends_to_menu = menu.addMenu(u'Depends To')  # \uf090
 
                     for dTask in depends:
                         action = depends_to_menu.addAction(dTask.name)
@@ -335,42 +484,52 @@ class TaskTreeView(QtWidgets.QTreeView):
                 # Add Dependent Of Menu
                 dependent_of = task.dependent_of
                 if dependent_of:
-                    dependent_of_menu = menu.addMenu(u'\uf08b Dependent Of')
+                    dependent_of_menu = menu.addMenu(u'Dependent Of')  # \uf08b
 
                     for dTask in dependent_of:
                         action = dependent_of_menu.addAction(dTask.name)
                         action.task = dTask
 
                 if not depends and not dependent_of:
-                    no_deps_action = menu.addAction(u'\uf00d No Dependencies')
+                    no_deps_action = menu.addAction(u'No Dependencies')  # \uf00d
                     no_deps_action.setEnabled(False)
 
                 # update task and create child task menu items
                 menu.addSeparator()
                 if defaults.is_power_user(logged_in_user):
                     create_sub_menu.addSeparator()
-                    update_task_action = update_sub_menu.addAction(u'\uf044 Update Task...')
+                    update_task_action = update_sub_menu.addAction(u'Update Task...')  # \uf044
 
-                    upload_thumbnail_action = update_sub_menu.addAction(u'\uf03e Upload Thumbnail...')
+                    upload_thumbnail_action = update_sub_menu.addAction(u'Upload Thumbnail...')  # \uf03e
 
                     # Export and Import JSON
                     create_sub_menu.addSeparator()
-                    export_to_json_action = create_sub_menu.addAction(u'\uf1f8 Export To JSON...')
+                    export_to_json_action = create_sub_menu.addAction(u'Export To JSON...')  # \uf1f8
 
-                    import_from_json_action = create_sub_menu.addAction(u'\uf1f8 Import From JSON...')
+                    import_from_json_action = create_sub_menu.addAction(u'Import From JSON...')  # \uf1f8
                     create_sub_menu.addSeparator()
 
-                    create_child_task_action = create_sub_menu.addAction(u'\uf0ae Create Child Task...')
+                    create_child_task_action = create_sub_menu.addAction(u'Create Child Task...')  # \uf0ae
 
-                    duplicate_task_hierarchy_action = create_sub_menu.addAction(u'\uf0c5 Duplicate Task Hierarchy...')
-                    delete_task_action = menu.addAction(u'\uf1f8 Delete Task...')
+                    duplicate_task_hierarchy_action = create_sub_menu.addAction(u'Duplicate Task Hierarchy...')  # \uf0c5
+                    delete_task_action = menu.addAction(u'Delete Task...')  # \uf1f8
+
+                    menu.addSeparator()
+
+                elif defaults.is_coordinator(logged_in_user):
+                    create_sub_menu.addSeparator()
+                    update_task_action = update_sub_menu.addAction(u'Update Task...')  # \uf044
+
+                    if task.entity_type in ['Asset', 'Sequence', 'Shot']:
+                        create_sub_menu.addSeparator()
+                        duplicate_task_hierarchy_action = create_sub_menu.addAction(u'Duplicate Task Hierarchy...')  # \uf0c5
 
                     menu.addSeparator()
 
                 # create the status_menu
                 status_menu = update_sub_menu.addMenu('Status')
 
-                fix_task_status_action = status_menu.addAction(u'\uf0e8 Fix Task Status')
+                fix_task_status_action = status_menu.addAction(u'Fix Task Status')  # \uf0e8
 
                 assert isinstance(status_menu, QtWidgets.QMenu)
                 status_menu.addSeparator()
@@ -452,9 +611,13 @@ class TaskTreeView(QtWidgets.QTreeView):
                     import webbrowser
                     webbrowser.open(url)
                 elif selected_action is open_in_file_browser_action:
+                    import os
                     from anima import utils
                     try:
-                        utils.open_browser_in_location(entity.absolute_path)
+                        if entity.entity_type == 'Project':
+                            utils.open_browser_in_location(os.path.join(entity.repository.path, entity.name))
+                        else:
+                            utils.open_browser_in_location(entity.absolute_path)
                     except IOError as e:
                         QtWidgets.QMessageBox.critical(
                             self,
@@ -567,7 +730,9 @@ class TaskTreeView(QtWidgets.QTreeView):
                 elif selected_action is duplicate_task_hierarchy_action:
                     duplicate_task_hierarchy_dialog = \
                         DuplicateTaskHierarchyDialog(
-                            parent=self, duplicated_task_name=item.task.name
+                            parent=self,
+                            duplicated_task_name=item.task.name,
+                            entity_type_name=item.task.entity_type
                         )
                     duplicate_task_hierarchy_dialog.exec_()
 
@@ -592,6 +757,18 @@ class TaskTreeView(QtWidgets.QTreeView):
                             DBSession.commit()
                             item.parent.reload()
                             self.find_and_select_entity_item(new_task)
+
+                elif selected_action is start_end_date_action:
+                    start_end_date_dialog = \
+                        StartEndDateDialog(
+                            parent=self, task_name=item.task.name
+                        )
+                    start_end_date_dialog.exec_()
+
+                    result = start_end_date_dialog.result()
+
+                    if result == accepted:
+                        print('accepted')
 
                 elif selected_action is delete_task_action:
                     answer = QtWidgets.QMessageBox.question(
@@ -681,7 +858,9 @@ class TaskTreeView(QtWidgets.QTreeView):
 
                 elif selected_action is import_from_json_action:
                     # show a file browser
-                    dialog = QtWidgets.QFileDialog(self, "Choose file")
+                    import os
+                    default_json_dir = os.path.expandvars('$REPONAS/LIBRARY/stalker_json_templates')
+                    dialog = QtWidgets.QFileDialog(self, "Choose file", default_json_dir)
                     dialog.setNameFilter("JSON Files (*.json)")
                     dialog.setFileMode(QtWidgets.QFileDialog.ExistingFile)
                     if dialog.exec_():
@@ -847,6 +1026,11 @@ class TaskTreeView(QtWidgets.QTreeView):
         :param index:
         :return:
         """
+        from anima import defaults
+        from stalker import LocalSession
+        local_session = LocalSession()
+        logged_in_user = local_session.logged_in_user
+
         model = self.model()
         item = model.itemFromIndex(index)
         if not item:
@@ -865,39 +1049,40 @@ class TaskTreeView(QtWidgets.QTreeView):
         except AttributeError:
             return
 
-        from stalker import Task
-        if item.task.entity_type == 'Task':
+        if defaults.is_power_user(logged_in_user) or defaults.is_coordinator(logged_in_user):
+            from stalker import Task
+            if item.task.entity_type == 'Task':
 
-            if task_id:
-                from stalker import SimpleEntity
-                entity = SimpleEntity.query.get(task_id)
+                if task_id:
+                    from stalker import SimpleEntity
+                    entity = SimpleEntity.query.get(task_id)
 
-            from anima.ui import task_dialog
-            task_main_dialog = task_dialog.MainDialog(
-                parent=self,
-                tasks=[entity]
-            )
-            task_main_dialog.exec_()
-            result = task_main_dialog.result()
-            task_main_dialog.deleteLater()
+                from anima.ui import task_dialog
+                task_main_dialog = task_dialog.MainDialog(
+                    parent=self,
+                    tasks=[entity]
+                )
+                task_main_dialog.exec_()
+                result = task_main_dialog.result()
+                task_main_dialog.deleteLater()
 
-            try:
-                # PySide and PySide2
-                accepted = QtWidgets.QDialog.DialogCode.Accepted
-            except AttributeError:
-                # PyQt4
-                accepted = QtWidgets.QDialog.Accepted
+                try:
+                    # PySide and PySide2
+                    accepted = QtWidgets.QDialog.DialogCode.Accepted
+                except AttributeError:
+                    # PyQt4
+                    accepted = QtWidgets.QDialog.Accepted
 
-            # refresh the task list
-            if result == accepted:
-                # just reload the same item
-                if item.parent:
-                    item.parent.reload()
-                else:
-                    # reload the entire
-                    self.fill()
+                # refresh the task list
+                if result == accepted:
+                    # just reload the same item
+                    if item.parent:
+                        item.parent.reload()
+                    else:
+                        # reload the entire
+                        self.fill()
 
-                self.find_and_select_entity_item(entity)
+                    self.find_and_select_entity_item(entity)
 
     def find_and_select_entity_item(self, task, tree_view=None):
         """finds and selects the task in the given tree_view item
