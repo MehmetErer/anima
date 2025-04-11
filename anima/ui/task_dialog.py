@@ -1637,7 +1637,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             # Remove MULTI_VALUE_ENUM because we are apparently setting a resource for all the selected tasks\
             self.remove_multi_value_enum_from_list_widget(self.resources_list_widget)
 
-            if index:
+            if index and index != -1:
                 # remove the item from the comboBox
                 self.resources_combo_box.removeItem(index)
                 # select the first index which is ''
@@ -1673,7 +1673,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             # Remove MULTI_VALUE_ENUM
             self.remove_multi_value_enum_from_list_widget(self.responsible_list_widget)
 
-            if index:
+            if index and index != -1:
                 # remove the item from the comboBox
                 self.responsible_combo_box.removeItem(index)
                 # select the first index which is ''
