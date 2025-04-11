@@ -937,6 +937,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         parent_task = self.get_unique_items(self.tasks, "parent")
         if parent_task:
             self.set_parent_task(parent_task)
+            # disable parenting of tasks if any versions are saved under
+            for t in tasks[0].walk_hierarchy():
+                if t.versions:
+                    self.parent_task_line_edit.setEnabled(False)
+                    self.pick_parent_task_push_button.setEnabled(False)
+                    break
         else:
             self.parent_task_line_edit.setEnabled(False)
 
@@ -992,6 +998,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             if isinstance(self.tasks[0], (Asset, Shot, Sequence)):
                 # set the code
                 self.code_line_edit.setText(self.tasks[0].code)
+            # disable renaming of tasks if any versions are saved under
+            for t in tasks[0].walk_hierarchy():
+                if t.versions:
+                    self.name_line_edit.setEnabled(False)
+                    self.code_line_edit.setEnabled(False)
+                    break
 
         # add resources
         if not self.multi_selection_mode:
