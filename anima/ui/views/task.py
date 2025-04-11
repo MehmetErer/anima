@@ -436,7 +436,7 @@ class TaskTreeView(QtWidgets.QTreeView):
 
         elif defaults.is_coordinator(logged_in_user):
             # create the Create Project menu item
-            create_project_action = create_sub_menu.addAction(u'Create Project...')  # \uf0e8
+            # create_project_action = create_sub_menu.addAction(u'Create Project...')  # \uf0e8
 
             if isinstance(entity, Project):
                 # this is a project!
