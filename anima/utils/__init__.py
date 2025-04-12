@@ -2049,10 +2049,22 @@ def fix_task_computed_time(task):
         task.computed_start = start_time
         task.computed_end = end_time
 
+        logger.debug('Task computed time is fixed!')
+
+
+def fix_schedule_timing(task):
+    """Fixes schedule timing based on time logs entered for finished tasks
+    :param task:
+    :return:
+    """
+    if task.status.code in ['CMPL', 'STOP', 'OH']:
+        from stalker.db.session import DBSession
         task.schedule_unit = 'h'
         task.schedule_timing = task.total_logged_seconds/3600
-
-        logger.debug('Task computed time is fixed!')
+        DBSession.add(task)
+        DBSession.commit()
+    else:
+        return
 
 
 def hsv_to_rgb(h, s, v):
