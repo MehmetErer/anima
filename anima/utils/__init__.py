@@ -2049,6 +2049,9 @@ def fix_task_computed_time(task):
         task.computed_start = start_time
         task.computed_end = end_time
 
+        task.schedule_unit = 'h'
+        task.schedule_timing = task.total_logged_seconds/3600
+
         logger.debug('Task computed time is fixed!')
 
 
