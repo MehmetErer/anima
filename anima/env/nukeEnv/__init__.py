@@ -503,6 +503,9 @@ Status: {{version.task.status.name}}
             root["logLut"].setValue(3)  # Input - ADX - ADX10
             root["floatLut"].setValue(5)  # ACES 2065-1
             # TODO: Tis is not generic. Fix ASAP.
+            if version.task.project.name in ['Turbulence']:
+                root["workingSpaceLUT"].setValue(9)  # ACEScg
+                root["floatLut"].setValue(9)  # ACEScg
             if version.task.project.name in ['Chaplin Dortlusu']:
                 root["colorManagement"].setValue(1)  # OCIO
                 root["workingSpaceLUT"].setValue(2)  # ACEScg
