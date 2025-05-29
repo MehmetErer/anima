@@ -293,7 +293,7 @@ class Blender(EnvironmentBase):
         :param fps:
         :return:
         """
-        bpy.context.scene.render.fps = fps
+        bpy.context.scene.render.fps = int(fps)
 
     def set_frame_range(self, start_frame=1001, end_frame=1100, adjust_frame_range=False):
         """Sets the frame range
