@@ -311,7 +311,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         # ========================================
         self.horizontal_layout_3 = QtWidgets.QHBoxLayout()
         self.find_from_path_line_edit = QtWidgets.QLineEdit(self)
-        self.find_from_path_line_edit.setPlaceholderText("Find From Path")
+        self.find_from_path_line_edit.setPlaceholderText("Find From Path or Task ID")
 
         self.horizontal_layout_3.addWidget(self.find_from_path_line_edit)
         self.find_from_path_push_button = QtWidgets.QPushButton(self)
@@ -2539,12 +2539,34 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         env = EnvironmentBase()
         if path:
             version = env.get_version_from_full_path(path)
+
+            if not version:
+                self.find_from_path_line_edit.setText('ERROR: Enter a valid version path or task id!')
+                return
+
             self.restore_ui(version)
+
+    def find_from_id(self, id):
+        """Finds task from the given id
+
+        :param id:
+        :return:
+        """
+        from stalker import Task
+        if id:
+            found_task_item = self.tasks_tree_view.find_and_select_entity_item(Task.query.get(id))
+            if not found_task_item:
+                self.find_from_path_line_edit.setText('ERROR: Enter a valid version path or task id!')
+                return
 
     def find_from_path_push_button_clicked(self):
         """runs when find_from_path_pushButton is clicked
         """
-        self.find_from_path(self.find_from_path_line_edit.text())
+        path_or_id = self.find_from_path_line_edit.text().strip().strip('(').strip(')')
+        if path_or_id.isdigit():
+            self.find_from_id(path_or_id)
+        else:
+            self.find_from_path(path_or_id)
 
     # def search_task_comboBox_textChanged(self, text):
     #     """runs when search_task_comboBox text changed
