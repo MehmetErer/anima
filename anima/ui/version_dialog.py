@@ -276,17 +276,20 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         self.vertical_layout_2 = QtWidgets.QVBoxLayout(self.tasks_group_box)
         # self.vertical_layout_2.setContentsMargins(-1, 9, -1, -1)
 
+        self.horizontal_layout_3a = QtWidgets.QHBoxLayout()
         # Show My Tasks Only CheckBox
-        self.my_tasks_only_check_box = QtWidgets.QCheckBox(self)
-        self.my_tasks_only_check_box.setText("Show my tasks only")
-        self.my_tasks_only_check_box.setChecked(False)
-        self.vertical_layout_2.addWidget(self.my_tasks_only_check_box)
+        self.my_projects_only_check_box = QtWidgets.QCheckBox(self)
+        self.my_projects_only_check_box.setText("Show my Projects only")
+        self.my_projects_only_check_box.setChecked(True)
+        self.horizontal_layout_3a.addWidget(self.my_projects_only_check_box)
 
         # Show Completed Projects
         self.show_completed_check_box = QtWidgets.QCheckBox(self)
         self.show_completed_check_box.setText("Show Completed Projects")
         self.show_completed_check_box.setChecked(False)
-        self.vertical_layout_2.addWidget(self.show_completed_check_box)
+        self.horizontal_layout_3a.addWidget(self.show_completed_check_box)
+
+        self.vertical_layout_2.addLayout(self.horizontal_layout_3a)
 
         self.horizontal_layout_4 = QtWidgets.QHBoxLayout()
         self.search_task_line_edit = QtWidgets.QLineEdit(self)
@@ -847,12 +850,12 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             self.logout
         )
 
-        # # my_tasks_only_checkBox
-        # QtCore.QObject.connect(
-        #     self.my_tasks_only_checkBox,
-        #     QtCore.SIGNAL("stateChanged(int)"),
-        #     self.my_tasks_only_check_box_changed
-        # )
+        # my_projects_only_check_box
+        QtCore.QObject.connect(
+            self.my_projects_only_check_box,
+            QtCore.SIGNAL("stateChanged(int)"),
+            self.my_projects_only_check_box_changed
+        )
 
         # search for tasks
         # QtCore.QObject.connect(
@@ -1473,14 +1476,17 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             except KeyError:
                 pass
 
-    # def my_tasks_only_check_box_changed(self, state):
-    #     """Runs when the my_tasks_only_checkBox state changed
-    #
-    #     :param state:
-    #     :return:
-    #     """
-    #     # self.tasks_tree_view.user_tasks_only = bool(state)
-    #     # self.fill_tasks_tree_view()
+    def my_projects_only_check_box_changed(self, state):
+        """Runs when the my_projects_only_check_box state changed
+
+        :param state:
+        :return:
+        """
+        self.tasks_tree_view.show_user_projects_only = bool(state)
+        show_completed = False
+        if self.show_completed_check_box.isChecked():
+            show_completed = True
+        self.fill_tasks_tree_view(show_completed_projects=show_completed)
 
     def fill_tasks_tree_view(self, show_completed_projects=False):
         """wrapper for the tasks_tree_view.fill() method
