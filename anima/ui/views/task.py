@@ -55,6 +55,7 @@ class DuplicateTaskHierarchyDialog(QtWidgets.QDialog):
         )
 
         self.line_edit.setText(self.duplicated_task_name)
+        self.line_edit.set_invalid('Please rename!')
         self.main_layout.addWidget(self.line_edit)
         self.main_layout.addWidget(self.validator_label)
 
@@ -125,6 +126,9 @@ class DuplicateTaskHierarchyDialog(QtWidgets.QDialog):
                 self.line_edit.set_valid()
             else:
                 self.line_edit.set_invalid('Use Stalker default naming convention! CODE_000_000(A)_0000')
+
+        if text == self.duplicated_task_name:
+            self.line_edit.set_invalid('Please rename!')
 
         if text == '':
             self.line_edit.set_invalid('Please enter a name!')
@@ -219,6 +223,7 @@ class TaskTreeView(QtWidgets.QTreeView):
 
         self.project = kwargs.pop('project', None)
         self.show_completed_projects = False
+        self.show_user_projects_only = True
 
         super(TaskTreeView, self).__init__(*args, **kwargs)
 
@@ -296,6 +301,12 @@ class TaskTreeView(QtWidgets.QTreeView):
         """
         logger.debug('start filling tasks_treeView')
         logger.debug('creating a new model')
+
+        from anima import defaults
+        from stalker import LocalSession
+        local_session = LocalSession()
+        logged_in_user = local_session.logged_in_user
+
         if not self.project:
             from sqlalchemy import alias
             from stalker import Task, Project
@@ -318,6 +329,14 @@ class TaskTreeView(QtWidgets.QTreeView):
 
             query = query.order_by(Project.name)
             projects = query.all()
+
+            if self.show_user_projects_only:
+                user_projects = []
+                for p in projects:
+                    stalker_project = Project.query.get(p[0])
+                    if logged_in_user in stalker_project.users:
+                        user_projects.append(p)
+                projects = user_projects
         else:
             self.project.has_children = bool(self.project.tasks)
             projects = [self.project]
@@ -523,6 +542,8 @@ class TaskTreeView(QtWidgets.QTreeView):
                     if task.entity_type in ['Asset', 'Sequence', 'Shot']:
                         create_sub_menu.addSeparator()
                         duplicate_task_hierarchy_action = create_sub_menu.addAction(u'Duplicate Task Hierarchy...')  # \uf0c5
+
+                    delete_task_action = menu.addAction(u'Delete Task...')  # \uf1f8
 
                     menu.addSeparator()
 
@@ -771,6 +792,23 @@ class TaskTreeView(QtWidgets.QTreeView):
                         print('accepted')
 
                 elif selected_action is delete_task_action:
+                    import os
+
+                    tasks = self.get_selected_tasks()
+                    logger.debug("tasks   : %s" % tasks)
+
+                    #  do not allow to delete a task if folder structure or any versions exist
+                    if not defaults.is_power_user(logged_in_user):  # except power users
+                        for t in tasks:
+                            if os.path.isdir(t.absolute_path) is True or t.versions:
+                                QtWidgets.QMessageBox.critical(
+                                    self,
+                                    "Can NOT Delete!",
+                                    "Tasks worked on can NOT be Deleted.!\n%s" % t.name,
+                                    QtWidgets.QMessageBox.Ok
+                                )
+                                return
+
                     answer = QtWidgets.QMessageBox.question(
                         self,
                         'Delete Task?',
@@ -781,9 +819,6 @@ class TaskTreeView(QtWidgets.QTreeView):
                     if answer == QtWidgets.QMessageBox.Yes:
                         from stalker.db.session import DBSession
                         from stalker import Task
-
-                        tasks = self.get_selected_tasks()
-                        logger.debug("tasks   : %s" % tasks)
 
                         task = Task.query.get(item.task.id)
 
