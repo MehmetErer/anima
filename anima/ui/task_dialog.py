@@ -860,6 +860,8 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         :param tasks: A list of Stalker Task instances
         :return:
         """
+        import os
+
         self.tasks = tasks
         if not self.tasks:
             return
@@ -872,6 +874,10 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         self.projects_combo_box.setEnabled(False)
 
         from stalker import Asset, Shot, Sequence
+        from anima import defaults
+        from stalker import LocalSession
+        local_session = LocalSession()
+        logged_in_user = local_session.logged_in_user
 
         project = self.get_unique_items(self.tasks, "project")
         if project:
@@ -937,12 +943,16 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         parent_task = self.get_unique_items(self.tasks, "parent")
         if parent_task:
             self.set_parent_task(parent_task)
-            # disable parenting of tasks if any versions are saved under
-            for t in tasks[0].walk_hierarchy():
-                if t.versions:
+            # disable parenting of tasks if any versions are saved under or folder structure exists
+            if not defaults.is_power_user(logged_in_user):  # except power users
+                if os.path.isdir(tasks[0].absolute_path) is True:
                     self.parent_task_line_edit.setEnabled(False)
                     self.pick_parent_task_push_button.setEnabled(False)
-                    break
+                for t in tasks[0].walk_hierarchy():
+                    if t.versions:
+                        self.parent_task_line_edit.setEnabled(False)
+                        self.pick_parent_task_push_button.setEnabled(False)
+                        break
         else:
             self.parent_task_line_edit.setEnabled(False)
 
@@ -988,6 +998,10 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             if index:
                 combo_box.setCurrentIndex(index)
 
+        # only allow power users to change task type
+        if not defaults.is_power_user(logged_in_user):
+            combo_box.setEnabled(False)
+
         if self.multi_selection_mode:
             self.name_line_edit.setEnabled(False)
             self.name_line_edit.set_valid()
@@ -998,12 +1012,16 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
             if isinstance(self.tasks[0], (Asset, Shot, Sequence)):
                 # set the code
                 self.code_line_edit.setText(self.tasks[0].code)
-            # disable renaming of tasks if any versions are saved under
-            for t in tasks[0].walk_hierarchy():
-                if t.versions:
+            # disable renaming of tasks if any versions are saved under or folder structure exists
+            if not defaults.is_power_user(logged_in_user):  # except power users
+                if os.path.isdir(tasks[0].absolute_path) is True:
                     self.name_line_edit.setEnabled(False)
                     self.code_line_edit.setEnabled(False)
-                    break
+                for t in tasks[0].walk_hierarchy():
+                    if t.versions:
+                        self.name_line_edit.setEnabled(False)
+                        self.code_line_edit.setEnabled(False)
+                        break
 
         # add resources
         if not self.multi_selection_mode:
