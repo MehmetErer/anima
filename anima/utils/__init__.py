@@ -248,6 +248,7 @@ def do_db_setup():
         from sqlalchemy.pool import NullPool
         settings = defaults.database_engine_settings
         settings['sqlalchemy.poolclass'] = NullPool
+        settings['sqlalchemy.pool_pre_ping'] = True
         from stalker import db
         db.setup(settings)
 
