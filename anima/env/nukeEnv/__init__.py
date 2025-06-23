@@ -496,16 +496,13 @@ Status: {{version.task.status.name}}
             root["floatLut"].setValue(0)         # ACES 2065-1
         else:
             root["colorManagement"].setValue(1)  # OCIO
-            root["workingSpaceLUT"].setValue(5)  # ACES 2065-1
+            root["workingSpaceLUT"].setValue(9)  # scene linear ACEScg
             root["monitorLut"].setValue(0)  # sRGB
             root["int8Lut"].setValue(6)  # Utility - sRGB - Texture
             root["int16Lut"].setValue(5)  # Utility - sRGB - Texture
             root["logLut"].setValue(3)  # Input - ADX - ADX10
             root["floatLut"].setValue(5)  # ACES 2065-1
             # TODO: Tis is not generic. Fix ASAP.
-            if version.task.project.name in ['Turbulence', 'Platonik']:
-                root["workingSpaceLUT"].setValue(9)  # ACEScg
-                # root["floatLut"].setValue(9)  # ACEScg
             if version.task.project.name in ['Chaplin Dortlusu']:
                 root["colorManagement"].setValue(1)  # OCIO
                 root["workingSpaceLUT"].setValue(2)  # ACEScg
