@@ -841,9 +841,9 @@ class Fusion(EnvironmentBase):
         self.comp.SetAttrs(
             {
                 "COMPN_GlobalStart": start_frame,
-                "COMPN_RenderStart": start_frame,
+                # "COMPN_RenderStart": start_frame,
                 "COMPN_GlobalEnd": end_frame,
-                "COMPN_RenderEnd": end_frame,
+                # "COMPN_RenderEnd": end_frame,
             }
         )
 
