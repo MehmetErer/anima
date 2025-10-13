@@ -234,7 +234,7 @@ def sort_strings_with_embedded_numbers(data):
 def do_db_setup():
     """the common routing for setting up the database
     """
-    from sqlalchemy.exc import UnboundExecutionError
+    from sqlalchemy.exc import UnboundExecutionError, OperationalError, StatementError
     from stalker.db.session import DBSession
     try:
         DBSession.connection()
@@ -249,8 +249,12 @@ def do_db_setup():
         settings = defaults.database_engine_settings
         settings['sqlalchemy.poolclass'] = NullPool
         settings['sqlalchemy.pool_pre_ping'] = True
+        settings['sqlalchemy.pool_recycle'] = 3600  # (1 hour)
         from stalker import db
         db.setup(settings)
+    except (OperationalError, StatementError):
+        DBSession.rollback()
+        logger.debug('too many clients, rolled back database')
 
 
 def utc_to_local(utc_dt):
