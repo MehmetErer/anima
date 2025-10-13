@@ -12,11 +12,11 @@ m = toolbar.addMenu("Anima", icon='STALKER.png')
 # Pipeline tools
 m.addCommand(
     "Pipeline/Open Version",
-    """from anima.ui.scripts import nuke_ui as nuke_ui;nuke_ui.version_dialog(1);"""
+    """from stalker.db.session import DBSession;DBSession.rollback();DBSession.rollback();from anima.ui.scripts import nuke_ui as nuke_ui;nuke_ui.version_dialog(1);"""
 )
 m.addCommand(
     "Pipeline/Save As Version",
-    """from anima.ui.scripts import nuke_ui as nuke_ui;nuke_ui.version_dialog(0);"""
+    """from stalker.db.session import DBSession;DBSession.rollback();DBSession.rollback();from anima.ui.scripts import nuke_ui as nuke_ui;nuke_ui.version_dialog(0);"""
 )
 m.addCommand(
     'Pipeline/Create/Update Output Nodes',
