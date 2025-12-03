@@ -422,7 +422,9 @@ class ConformerUI(object):
 
         self.task_name_combo_box.addItem('Comp', -1)
         self.task_name_combo_box.addItem('Plate', 0)
-        self.task_name_combo_box.addItem('Zero', 1)
+        self.task_name_combo_box.addItem('Cleanup', 1)
+        self.task_name_combo_box.addItem('Roto', 2)
+        self.task_name_combo_box.addItem('Zero', 3)
 
         self.ext_name_combo_box.addItem('exr', -1)
         self.ext_name_combo_box.addItem('png', 0)
@@ -764,9 +766,9 @@ class ConformerUI(object):
             for root, dirs, files in os.walk(sg_dir):
                 for f in files:
                     base_name = os.path.basename(os.path.splitext(f)[0])
-                    if f.endswith('.mov') and self.validate_shot_name(base_name):
+                    if os.path.splitext(f)[-1] in ['.mov', '.mp4'] and self.validate_shot_name(base_name):
                         sg_path = os.path.normpath(os.path.join(root, f))
-                        sg_info = [os.path.basename(sg_path).split('.')[0], sg_path] #  [nice_name_version, abs_path]
+                        sg_info = [os.path.basename(sg_path).split('.')[0], sg_path]  # [nice_name_version, abs_path]
                         sg_data.append(sg_info)
         else:
             raise RuntimeError('No Such Directory! -> %s' % sg_dir)
@@ -1529,7 +1531,8 @@ class ConformerUI(object):
                                         break
                             if self.plus_refs_check_box.isChecked():
                                 # TODO: Fix DRY. This only works in default File Structure. It must be more generic.
-                                shot_code = '_'.join(os.path.basename(clip_path).split('_')[:4])
+                                # shot_code = '_'.join(os.path.basename(clip_path).split('_')[:4])
+                                shot_code = '_'.join(os.path.basename(clip_path).split('_')[:3]).replace('TBL', 'TBL_001')
                                 for ref_clip_info in ref_path_list:
                                     if os.path.basename(ref_clip_info).startswith(shot_code):
                                         remove_sg_ref_info.append(ref_clip_info)
@@ -1629,7 +1632,11 @@ class ConformerUI(object):
                     print("end frame  : %s" % end_index)
 
                     if extension in ['mov', 'mp4']:
-                        media_pool_item = media_pool.ImportMedia([clip_path])[0]
+                        try:
+                            media_pool_item = media_pool.ImportMedia([clip_path])[0]
+                        except IndexError:
+                            media_pool_item = None
+                            pass
                     else:
                         media_pool_item = media_pool.ImportMedia([
                             {
