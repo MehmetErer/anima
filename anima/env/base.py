@@ -652,7 +652,7 @@ class EnvironmentBase(object):
                     a = version.nice_name.split('_')
                     a.pop(-2)
                     sig_name = 'O_%s' % '_'.join(a[:-1])
-            if version.task.project.name in ['Turbulence', 'Hsddg'] and version.task.type.name == 'Comp':
+            if version.task.project.name in ['Turbulence', 'Hsddg', 'Broken Eggs'] and version.task.type.name == 'Comp':
                 if version.take_name.lower() == 'main':
                     a = version.nice_name.split('_')
                     a[-1] = 'IMJ'
