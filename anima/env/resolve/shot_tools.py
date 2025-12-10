@@ -945,7 +945,7 @@ class ShotClip(object):
         """validates the shot code
         """
         import re
-        regex = re.compile(r"([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1}|\d{3}[A-Z]{0,1}\d{1})_(\d{4}|\d{3})")
+        regex = re.compile(r"([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1}|\d{3}[A-Z]{0,2}\d{1})_(\d{4}|\d{3})")
         #  ([\w]+)_(\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})    ([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})     ([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4}|\d{3})
         shot_code = self.shot_code
         match = regex.match(shot_code)
