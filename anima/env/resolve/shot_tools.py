@@ -945,8 +945,8 @@ class ShotClip(object):
         """validates the shot code
         """
         import re
-        regex = re.compile(r"([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4}|\d{3})")
-        #  ([\w]+)_(\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})    ([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})
+        regex = re.compile(r"([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1}|\d{3}[A-Z]{0,1}\d{1})_(\d{4}|\d{3})")
+        #  ([\w]+)_(\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})    ([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4})     ([\w]+)_(\d{3}|[A-Z]\d{3})_(\d{3}[A-Z]{0,1})_(\d{4}|\d{3})
         shot_code = self.shot_code
         match = regex.match(shot_code)
         if not match:
@@ -2282,7 +2282,12 @@ class ReviewManagerUI(object):
         sequence = self.project_combo_box.get_current_project()
         sm = ShotManager(project, sequence)
         shot_clip = sm.get_current_shot_clip()
+        clip = sm.get_current_clip()
         stalker_shot = shot_clip.get_shot()
+        if not stalker_shot:
+            from stalker import Shot
+            shot_name = '_'.join(clip.GetName().split('_')[:3]).replace('TBL', 'TBL_001')
+            stalker_shot = Shot.query.filter(Shot.name == shot_name).first()
 
         entity = stalker_shot
         if self.comp_check_box.isChecked():
