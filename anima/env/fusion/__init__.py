@@ -1720,7 +1720,7 @@ class Fusion(EnvironmentBase):
             })
 
         # TODO: This is not generic. Fix ASAP.
-        if version.task.project.name in ['Helgoland', 'Kein Tier', 'Wolf Hall', 'Castle', 'Drowak', 'Turbulence']:
+        if version.task.project.name in ['Helgoland', 'Kein Tier', 'Wolf Hall', 'Castle', 'Drowak', 'Turbulence', 'Westend Girl']:
             try:
                 output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.Compression'] = 4
                 output_format_data[1]['node_tree']['input_list']['OpenEXRFormat.AlphaEnable'] = 1
