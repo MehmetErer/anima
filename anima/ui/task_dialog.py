@@ -999,7 +999,7 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
                 combo_box.setCurrentIndex(index)
 
         # only allow power users to change task type
-        if not defaults.is_power_user(logged_in_user):
+        if combo_box and not defaults.is_power_user(logged_in_user):
             combo_box.setEnabled(False)
 
         if self.multi_selection_mode:
