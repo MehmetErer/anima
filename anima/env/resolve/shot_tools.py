@@ -1647,7 +1647,10 @@ class ShotManagerUI(object):
                     div = 1
                     if img.size[0] > 300:
                         div = int(img.size[0]/300)
-                    img.thumbnail((img.size[0]/div, img.size[1]/div), Image.ANTIALIAS)
+                    if version_number > 1805:
+                        img.thumbnail((img.size[0] / div, img.size[1] / div), Image.LANCZOS)
+                    else:
+                        img.thumbnail((img.size[0] / div, img.size[1] / div), Image.ANTIALIAS)
                     img.save(thumbnail_full_path, quality=80)
                     # upload thumbnail
                     utils.upload_thumbnail(shot, thumbnail_full_path)
