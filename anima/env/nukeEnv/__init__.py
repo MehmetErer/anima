@@ -19,6 +19,7 @@ class Nuke(EnvironmentBase):
         # and add you own modifications to __init__
         # get the root node
         self._root = self.get_root_node()
+        self._viewer_node = self.get_active_viewer_node()
 
         self._main_output_node_name = "MAIN_OUTPUT"
         self._output_formats = ['exr', 'mov']
@@ -28,6 +29,12 @@ class Nuke(EnvironmentBase):
         """returns the root node of the current nuke session
         """
         return nuke.toNode("root")
+
+    @classmethod
+    def get_active_viewer_node(cls):
+        """returns the active viewer node of the current nuke session
+        """
+        return nuke.activeViewer().node()
 
     def save_as(self, version, run_pre_publishers=True):
         """"the save action for nuke environment
@@ -88,6 +95,10 @@ class Nuke(EnvironmentBase):
                 self.set_frame_range(
                     shot.cut_in,
                     shot.cut_out
+                )
+                self.set_render_frame_range(
+                    shot.source_in,
+                    shot.source_out
                 )
             imf = shot.image_format
         else:
@@ -222,6 +233,15 @@ class Nuke(EnvironmentBase):
         """
         self._root.knob('first_frame').setValue(start_frame)
         self._root.knob('last_frame').setValue(end_frame)
+
+    def set_render_frame_range(self, start_frame=1, end_frame=100,
+                               adjust_frame_range=False):
+        """sets the in and out frame range of active viewer
+        """
+        viewer_range = "%i-%i" % (int(start_frame), int(end_frame))
+        self._viewer_node.knob('frame_range').setValue(viewer_range)
+        if self._viewer_node.knob('frame_range').getValue() != "1-100":
+            self._viewer_node.knob('frame_range_lock').setValue(True)
 
     def set_fps(self, fps=25):
         """sets the current fps
