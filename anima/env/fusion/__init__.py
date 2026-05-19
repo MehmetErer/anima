@@ -647,6 +647,11 @@ class Fusion(EnvironmentBase):
                 start_frame=shot.cut_in,
                 end_frame=shot.cut_out,
             )
+            # set render frame ranges
+            self.set_render_frame_range(
+                start_frame=shot.source_in,
+                end_frame=shot.source_out,
+            )
         else:
             # use the Project image_format
             fps = version.task.project.fps
@@ -841,9 +846,18 @@ class Fusion(EnvironmentBase):
         self.comp.SetAttrs(
             {
                 "COMPN_GlobalStart": start_frame,
-                # "COMPN_RenderStart": start_frame,
                 "COMPN_GlobalEnd": end_frame,
-                # "COMPN_RenderEnd": end_frame,
+            }
+        )
+
+    def set_render_frame_range(self, start_frame=1, end_frame=100,
+                               adjust_frame_range=False):
+        """sets the start and end render frame range
+        """
+        self.comp.SetAttrs(
+            {
+                "COMPN_RenderStart": start_frame,
+                "COMPN_RenderEnd": end_frame,
             }
         )
 
@@ -1039,13 +1053,13 @@ class Fusion(EnvironmentBase):
                 node.Input = input_node
             elif 'ref_id' in node_tree['connected_to']:
                 ref_id = node_tree['connected_to']['ref_id']
-                print('ref_id: %s' % ref_id)
+                # print('ref_id: %s' % ref_id)
                 # find a node with ref_id equals to ref_id that is given in the
                 # node tree
                 all_nodes = self.comp.GetToolList().values()
                 for r_node in all_nodes:
                     node_ref_id = r_node.GetData('ref_id')
-                    print('node_ref_id: %s' % node_ref_id)
+                    # print('node_ref_id: %s' % node_ref_id)
                     if node_ref_id == ref_id:
                         node.Input = r_node
                         break
