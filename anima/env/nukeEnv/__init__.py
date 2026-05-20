@@ -19,7 +19,7 @@ class Nuke(EnvironmentBase):
         # and add you own modifications to __init__
         # get the root node
         self._root = self.get_root_node()
-        self._viewer_node = self.get_active_viewer_node()
+        # self._viewer_node = self.get_active_viewer_node()
 
         self._main_output_node_name = "MAIN_OUTPUT"
         self._output_formats = ['exr', 'mov']
@@ -100,10 +100,10 @@ class Nuke(EnvironmentBase):
                     shot.cut_in,
                     shot.cut_out
                 )
-                self.set_render_frame_range(
-                    shot.source_in,
-                    shot.source_out
-                )
+                #self.set_render_frame_range(
+                #    shot.source_in,
+                #    shot.source_out
+                #)
             imf = shot.image_format
         else:
             imf = project.image_format
