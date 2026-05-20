@@ -34,7 +34,11 @@ class Nuke(EnvironmentBase):
     def get_active_viewer_node(cls):
         """returns the active viewer node of the current nuke session
         """
-        return nuke.activeViewer().node()
+        viewer_node = nuke.activeViewer().node()
+        if viewer_node:
+            return viewer_node
+        else:
+            return None
 
     def save_as(self, version, run_pre_publishers=True):
         """"the save action for nuke environment
@@ -239,9 +243,10 @@ class Nuke(EnvironmentBase):
         """sets the in and out frame range of active viewer
         """
         viewer_range = "%i-%i" % (int(start_frame), int(end_frame))
-        self._viewer_node.knob('frame_range').setValue(viewer_range)
-        if self._viewer_node.knob('frame_range').getValue() != "1-100":
-            self._viewer_node.knob('frame_range_lock').setValue(True)
+        if self._viewer_node:
+            self._viewer_node.knob('frame_range').setValue(viewer_range)
+            if self._viewer_node.knob('frame_range').getValue() != "1-100":
+                self._viewer_node.knob('frame_range_lock').setValue(True)
 
     def set_fps(self, fps=25):
         """sets the current fps
