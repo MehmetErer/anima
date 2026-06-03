@@ -530,6 +530,7 @@ class GenericTools(object):
 
     default_output_templates = [
         "%{Clip Name}",
+        "%{Comments}",
         "%{Clip Base Name}_Denoised",
         "%{Timeline Name}_CL%{Clip #}_v001",
         "%{Marker Note}_Plate_Main_v001.",
