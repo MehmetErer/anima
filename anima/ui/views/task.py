@@ -539,7 +539,7 @@ class TaskTreeView(QtWidgets.QTreeView):
                     create_sub_menu.addSeparator()
                     update_task_action = update_sub_menu.addAction(u'Update Task...')  # \uf044
 
-                    if task.entity_type in ['Asset', 'Sequence', 'Shot']:
+                    if task.entity_type in ['Asset', 'Sequence', 'Shot', 'Task']:
                         create_sub_menu.addSeparator()
                         duplicate_task_hierarchy_action = create_sub_menu.addAction(u'Duplicate Task Hierarchy...')  # \uf0c5
 
@@ -568,6 +568,10 @@ class TaskTreeView(QtWidgets.QTreeView):
                 for status_code in defaults.status_colors:
                     change_status_menu_action = status_menu.addAction(status_code)
                     change_status_menu_action.setEnabled(change_status_menu_actions_enabled)
+
+                    if defaults.is_coordinator(logged_in_user):
+                        if status_code in ['stop']:
+                            change_status_menu_action.setEnabled(True)
 
                     change_status_menu_action.setObjectName('status_%s' % status_code)
 
