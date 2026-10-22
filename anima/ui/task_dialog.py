@@ -944,15 +944,16 @@ class MainDialog(QtWidgets.QDialog, AnimaDialogBase):
         if parent_task:
             self.set_parent_task(parent_task)
             # disable parenting of tasks if any versions are saved under or folder structure exists
-            if not defaults.is_power_user(logged_in_user):  # except power users
-                if os.path.isdir(tasks[0].absolute_path) is True:
-                    self.parent_task_line_edit.setEnabled(False)
-                    self.pick_parent_task_push_button.setEnabled(False)
-                for t in tasks[0].walk_hierarchy():
-                    if t.versions:
+            if not defaults.is_power_user(logged_in_user): # except power users
+                if not defaults.is_coordinator(logged_in_user):  # except coordinators
+                    if os.path.isdir(tasks[0].absolute_path) is True:
                         self.parent_task_line_edit.setEnabled(False)
                         self.pick_parent_task_push_button.setEnabled(False)
-                        break
+                    for t in tasks[0].walk_hierarchy():
+                        if t.versions:
+                            self.parent_task_line_edit.setEnabled(False)
+                            self.pick_parent_task_push_button.setEnabled(False)
+                            break
         else:
             self.parent_task_line_edit.setEnabled(False)
 
