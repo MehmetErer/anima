@@ -544,3 +544,11 @@ Status: {{version.task.status.name}}
                 root["int16Lut"].setValue(5)  # Utility - sRGB - Texture
                 root["logLut"].setValue(3)  # Input - ADX - ADX10
                 root["floatLut"].setValue('Utility - sRGB - Texture')
+            if version.task.project.name in ['Garanti']:
+                root["colorManagement"].setValue(1)  # OCIO
+                root["workingSpaceLUT"].setValue(2)  # ACEScg
+                root["monitorLut"].setValue(0)  # sRGB
+                root["int8Lut"].setValue(6)  # Utility - sRGB - Texture
+                root["int16Lut"].setValue(5)  # Utility - sRGB - Texture
+                root["logLut"].setValue(3)  # Input - ADX - ADX10
+                root["floatLut"].setValue('Output - Rec.709')
