@@ -349,6 +349,8 @@ class Nuke(EnvironmentBase):
                     main_write_node["metadata"].setValue(4)  # all metadata
                 if version.task.project.name in ['Chaplin Dortlusu']:
                     main_write_node["colorspace"].setValue('Input - ARRI - V3 LogC (EI160) - Wide Gamut')
+                if version.task.project.name in ['Garanti']:
+                    main_write_node["colorspace"].setValue('Output - Rec.709')
             elif output_format_enum == 'mov':
                 main_write_node.knob('file_type').setValue(output_format_enum)
                 main_write_node["colorspace"].setValue('Output - Rec.709')
